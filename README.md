@@ -111,7 +111,9 @@ SITE_NAME = "Метраж"                   # шапка, подвал, og:site
 2. В репозитории: Settings → Pages → Custom domain. Там должно стоять `metrazh.online` (GitHub подхватывает его из файла `CNAME`). Нажмите Save.
 3. Когда GitHub проверит DNS (от нескольких минут до суток), включите **Enforce HTTPS**.
 
-Старый адрес `conormcgregor645-wq.github.io/ai/` после этого автоматически перенаправляется на новый домен.
+Репозиторий называется `Stroyka`. Когда домен подключён, GitHub сам перенаправляет адрес `conormcgregor645-wq.github.io/Stroyka/` на https://metrazh.online/.
+
+Старый адрес `conormcgregor645-wq.github.io/ai/` после переименования репозитория не работает: GitHub Pages не перенаправляет его ни на новое имя, ни на домен. Если эта ссылка где-то опубликована, замените её на https://metrazh.online/.
 
 ## Публикация на GitHub Pages
 
