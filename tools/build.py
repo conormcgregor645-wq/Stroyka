@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Генератор страниц РемонтКалк.
+"""Генератор страниц сайта «Метраж».
 
 Все HTML-страницы, sitemap.xml и robots.txt собираются из этого файла:
 общая шапка, меню, подвал, SEO-разметка и тексты. Запуск из корня репозитория:
@@ -13,11 +13,14 @@
 """
 import json
 import os
+from urllib.parse import urlparse
 
 # ===== НАСТРОЙКИ =====
 # Базовый адрес сайта со слешем на конце. После переезда на свой домен
 # поменяйте здесь и пересоберите: обновятся canonical, og:url, sitemap и robots.
-SITE_URL = "https://conormcgregor645-wq.github.io/ai/"
+SITE_URL = "https://metrazh.online/"
+# Название сайта: шапка, подвал, og:site_name, заголовок страницы 404.
+SITE_NAME = "Метраж"
 # Дата для <lastmod> в sitemap.xml.
 LASTMOD = "2026-10-12"
 # Номер счётчика Метрики для <noscript> — тот же, что в assets/site.js.
@@ -161,7 +164,7 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
 <link rel="canonical" href="{canon}">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:site_name" content="РемонтКалк">
+<meta property="og:site_name" content="{SITE_NAME}">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{canon}">
@@ -176,7 +179,7 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-<a class="logo" href="index.html">📐 Ремонт<span>Калк</span></a>
+<a class="logo" href="index.html">📐 {SITE_NAME}</a>
 <button type="button" class="burger" aria-label="Меню калькуляторов" aria-expanded="false" aria-controls="site-nav">
 <svg class="i-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
 <svg class="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -195,7 +198,7 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
 </article>
 </main>
 <footer class="site-footer"><div class="wrap">
-<div>© 2026 РемонтКалк — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</div>
+<div>© 2026 {SITE_NAME} — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</div>
 <nav class="footer-links" aria-label="Все калькуляторы">{footer_links}</nav>
 </div></footer>
 <!-- Яндекс Метрика: код счётчика в assets/site.js, здесь — запасной вариант без JavaScript -->
@@ -530,7 +533,7 @@ def build_brick():
 def build_404():
     links = "".join(f'<a class="card" href="{h}"><span class="icon" aria-hidden="true">{i}</span><h2>{t}</h2><span class="go">Рассчитать →</span></a>'
                     for h, t, i, *_ in CALCS)
-    page("404.html", "Страница не найдена — РемонтКалк", "Такой страницы нет. Выберите калькулятор.",
+    page("404.html", f"Страница не найдена — {SITE_NAME}", "Такой страницы нет. Выберите калькулятор.",
          "Страница не найдена", "Возможно, ссылка устарела. Выберите нужный калькулятор:",
          f'<section class="cards">{links}</section>', robots="noindex", in_sitemap=False)
 
@@ -542,6 +545,15 @@ def build_seo_files():
             prio = "1.0" if url == SITE_URL else "0.8"
             f.write(f"  <url><loc>{url}</loc><lastmod>{LASTMOD}</lastmod><priority>{prio}</priority></url>\n")
         f.write("</urlset>\n")
+    # CNAME для GitHub Pages: свой домен берётся из SITE_URL.
+    host = urlparse(SITE_URL).hostname
+    cname = os.path.join(ROOT, "CNAME")
+    if host.endswith(".github.io"):
+        if os.path.exists(cname):
+            os.remove(cname)
+    else:
+        with open(cname, "w", encoding="utf-8") as f:
+            f.write(host + "\n")
     with open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8") as f:
         f.write(f"User-agent: *\nAllow: /\nDisallow: /tools/\n\nSitemap: {SITE_URL}sitemap.xml\n")
 
