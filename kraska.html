@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор краски — сколько литров нужно на стены и потолок</title>
+<meta name="description" content="Онлайн-расчёт краски для стен и потолка: литры и количество банок с учётом слоёв, расхода, окон и дверей. Плюс грунтовка и малярный скотч.">
+<link rel="canonical" href="https://conormcgregor645-wq.github.io/ai/kraska.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Калькулятор краски — сколько литров нужно на стены и потолок">
+<meta property="og:description" content="Онлайн-расчёт краски для стен и потолка: литры и количество банок с учётом слоёв, расхода, окон и дверей. Плюс грунтовка и малярный скотч.">
+<meta property="og:url" content="https://conormcgregor645-wq.github.io/ai/kraska.html">
+<meta name="theme-color" content="#d9622b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%90%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Сколько слоёв краски наносить?", "acceptedAnswer": {"@type": "Answer", "text": "Обычно два. Один слой допустим при обновлении того же цвета, три — при перекрашивании тёмной стены в светлый цвет."}}, {"@type": "Question", "name": "Сколько краски нужно на 1 м² стены?", "acceptedAnswer": {"@type": "Answer", "text": "При двух слоях и расходе 10 м²/л — около 0,2 л на квадратный метр."}}, {"@type": "Question", "name": "Что значит расход на банке?", "acceptedAnswer": {"@type": "Answer", "text": "Это площадь, которую покрывает литр краски в один слой на ровной загрунтованной поверхности. На шероховатых и непрогрунтованных стенах расход выше."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "Калькулятор краски", "url": "https://conormcgregor645-wq.github.io/ai/kraska.html", "applicationCategory": "UtilitiesApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "RUB"}}</script>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<a class="logo" href="index.html">📐 Ремонт<span>Калк</span></a>
+<nav class="nav" aria-label="Калькуляторы"><a href="index.html">Главная</a><a href="plitka.html">Плитка</a><a href="oboi.html">Обои</a><a href="kraska.html" aria-current="page">Краска</a><a href="laminat.html">Ламинат</a></nav>
+</div></header>
+<main class="wrap">
+<section class="hero">
+<div class="breadcrumbs"><a href="index.html">Главная</a> → Калькулятор краски</div>
+<h1>Калькулятор краски</h1>
+<p>Сколько краски нужно на стены и потолок: литры, банки, грунтовка.</p>
+</section>
+<section class="calc">
+<form class="panel" id="calc-form" data-calc="paint" autocomplete="off" novalidate>
+<h2>Параметры</h2>
+<h3>Что красим</h3><div class="seg" role="radiogroup"><input type="radio" id="s-surface-walls" name="surface" value="walls" checked><label for="s-surface-walls">Стены</label><input type="radio" id="s-surface-ceiling" name="surface" value="ceiling"><label for="s-surface-ceiling">Потолок</label><input type="radio" id="s-surface-both" name="surface" value="both"><label for="s-surface-both">Стены и потолок</label></div><h3>Помещение</h3><div class="grid"><div class="field"><label for="f-room_l">Длина, м</label><input id="f-room_l" name="room_l" type="text" inputmode="decimal" value="4"></div><div class="field"><label for="f-room_w">Ширина, м</label><input id="f-room_w" name="room_w" type="text" inputmode="decimal" value="3"></div><div class="field"><label for="f-room_h">Высота, м</label><input id="f-room_h" name="room_h" type="text" inputmode="decimal" value="2.7"></div></div><div id="openings-block"><h3>Двери и окна</h3><div class="openings" id="openings"></div><p class="hint">Площадь проёмов вычитается из площади стен.</p><button type="button" class="btn" id="add-opening">+ Добавить проём</button></div><h3>Краска</h3><div class="grid"><div class="field"><label for="f-layers">Слоёв</label><select id="f-layers" name="layers"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></div><div class="field"><label for="f-coverage">Расход, м²/л на слой</label><input id="f-coverage" name="coverage" type="text" inputmode="decimal" value="9"></div><div class="field"><label for="f-can">Объём тары</label><select id="f-can" name="can"><option value="0.9">0,9 л</option><option value="2.5">2,5 л</option><option value="2.7">2,7 л</option><option value="4.5">4,5 л</option><option value="5">5 л</option><option value="9" selected>9 л</option><option value="10">10 л</option></select></div></div><div class="grid" style="margin-top:12px"><div class="field"><label for="f-reserve">Запас</label><select id="f-reserve" name="reserve"><option value="0">без запаса</option><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15% — пористая поверхность</option></select></div><div class="field"><label for="f-price">Цена тары, ₽ (необяз.)</label><input id="f-price" name="price" type="text" inputmode="decimal" value=""></div></div><p class="hint">Расход указан на банке: обычно 8–12 м² на литр для одного слоя. Для тёмных цветов и фактурных стен берите меньшее значение.</p>
+</form>
+<aside class="panel result-panel" id="result" aria-live="polite"></aside>
+</section><article class="article">
+<h2>Формула расчёта краски</h2>
+<p>Литры = площадь × количество слоёв ÷ расход (м²/л) + запас. Площадь стен — периметр × высота минус окна и двери, площадь потолка равна площади пола.</p>
+<h2>Расход разных красок</h2>
+<div class="table-wrap"><table>
+<tr><th>Тип краски</th><th>Расход на 1 слой</th></tr>
+<tr><td>Водоэмульсионная для потолка</td><td>6–8 м²/л</td></tr>
+<tr><td>Интерьерная акриловая для стен</td><td>8–12 м²/л</td></tr>
+<tr><td>Латексная моющаяся</td><td>10–12 м²/л</td></tr>
+<tr><td>Алкидная эмаль</td><td>10–14 м²/л</td></tr>
+</table></div>
+<p>Перед покраской стены грунтуют: грунтовка уменьшает впитываемость и экономит до трети краски.</p>
+</article>
+<article class="article">
+<h2>Частые вопросы</h2>
+<details><summary>Сколько слоёв краски наносить?</summary><p>Обычно два. Один слой допустим при обновлении того же цвета, три — при перекрашивании тёмной стены в светлый цвет.</p></details>
+<details><summary>Сколько краски нужно на 1 м² стены?</summary><p>При двух слоях и расходе 10 м²/л — около 0,2 л на квадратный метр.</p></details>
+<details><summary>Что значит расход на банке?</summary><p>Это площадь, которую покрывает литр краски в один слой на ровной загрунтованной поверхности. На шероховатых и непрогрунтованных стенах расход выше.</p></details>
+</article>
+</main>
+<footer class="site-footer"><div class="wrap">
+<div>© 2026 РемонтКалк — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</div>
+<div><a href="plitka.html">Плитка</a> · <a href="oboi.html">Обои</a> · <a href="kraska.html">Краска</a> · <a href="laminat.html">Ламинат</a></div>
+</div></footer>
+<script src="assets/partners.js"></script>
+<script src="assets/calc.js"></script>
+</body>
+</html>
