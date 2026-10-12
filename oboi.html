@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор обоев — сколько рулонов нужно на комнату</title>
+<meta name="description" content="Рассчитайте, сколько рулонов обоев нужно на комнату: учёт раппорта, ширины рулона 0,53 или 1,06 м, окон и дверей. Клей и обрезки.">
+<link rel="canonical" href="https://conormcgregor645-wq.github.io/ai/oboi.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Калькулятор обоев — сколько рулонов нужно на комнату">
+<meta property="og:description" content="Рассчитайте, сколько рулонов обоев нужно на комнату: учёт раппорта, ширины рулона 0,53 или 1,06 м, окон и дверей. Клей и обрезки.">
+<meta property="og:url" content="https://conormcgregor645-wq.github.io/ai/oboi.html">
+<meta name="theme-color" content="#d9622b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%90%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Сколько рулонов обоев нужно на комнату 18 м²?", "acceptedAnswer": {"@type": "Answer", "text": "Для комнаты 3×6 м с потолком 2,7 м и метровыми обоями без подгонки — около 6 рулонов. С раппортом 64 см и подгонкой понадобится больше: введите параметры в калькулятор."}}, {"@type": "Question", "name": "Какие обои выгоднее — 0,53 или 1,06 м?", "acceptedAnswer": {"@type": "Answer", "text": "Метровые клеить быстрее, швов вдвое меньше. Но в маленьких комнатах с большим количеством углов и проёмов от узких рулонов остаётся меньше обрезков."}}, {"@type": "Question", "name": "Нужно ли вычитать окна и двери?", "acceptedAnswer": {"@type": "Answer", "text": "Да, калькулятор вычитает их площадь. Обрезки обычно уходят на участки над дверью и под окном, поэтому отдельный запас на них не нужен."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "Калькулятор обоев", "url": "https://conormcgregor645-wq.github.io/ai/oboi.html", "applicationCategory": "UtilitiesApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "RUB"}}</script>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<a class="logo" href="index.html">📐 Ремонт<span>Калк</span></a>
+<nav class="nav" aria-label="Калькуляторы"><a href="index.html">Главная</a><a href="plitka.html">Плитка</a><a href="oboi.html" aria-current="page">Обои</a><a href="kraska.html">Краска</a><a href="laminat.html">Ламинат</a></nav>
+</div></header>
+<main class="wrap">
+<section class="hero">
+<div class="breadcrumbs"><a href="index.html">Главная</a> → Калькулятор обоев</div>
+<h1>Калькулятор обоев</h1>
+<p>Сколько рулонов обоев нужно на комнату — с учётом раппорта, окон и дверей.</p>
+</section>
+<section class="calc">
+<form class="panel" id="calc-form" data-calc="wallpaper" autocomplete="off" novalidate>
+<h2>Параметры</h2>
+<h3>Помещение</h3><div class="grid"><div class="field"><label for="f-room_l">Длина, м</label><input id="f-room_l" name="room_l" type="text" inputmode="decimal" value="4"></div><div class="field"><label for="f-room_w">Ширина, м</label><input id="f-room_w" name="room_w" type="text" inputmode="decimal" value="3"></div><div class="field"><label for="f-room_h">Высота, м</label><input id="f-room_h" name="room_h" type="text" inputmode="decimal" value="2.7"></div></div><div id="openings-block"><h3>Двери и окна</h3><div class="openings" id="openings"></div><p class="hint">Площадь проёмов вычитается из площади стен.</p><button type="button" class="btn" id="add-opening">+ Добавить проём</button></div><h3>Рулон</h3><div class="grid"><div class="field"><label for="f-roll_w">Ширина рулона</label><select id="f-roll_w" name="roll_w"><option value="0.53">0,53 м</option><option value="0.7">0,70 м</option><option value="1.06" selected>1,06 м</option></select></div><div class="field"><label for="f-roll_l">Длина рулона, м</label><input id="f-roll_l" name="roll_l" type="text" inputmode="decimal" value="10.05"></div><div class="field"><label for="f-rapport">Раппорт, см</label><input id="f-rapport" name="rapport" type="text" inputmode="decimal" value="0"></div></div><h3>Подгонка рисунка</h3><div class="seg" role="radiogroup"><input type="radio" id="s-match-none" name="match" value="none" checked><label for="s-match-none">Без подгонки</label><input type="radio" id="s-match-straight" name="match" value="straight"><label for="s-match-straight">Прямая</label><input type="radio" id="s-match-offset" name="match" value="offset"><label for="s-match-offset">Со смещением</label></div><div class="grid" style="margin-top:12px"><div class="field"><label for="f-price">Цена рулона, ₽ (необяз.)</label><input id="f-price" name="price" type="text" inputmode="decimal" value=""></div></div>
+</form>
+<aside class="panel result-panel" id="result" aria-live="polite"></aside>
+</section><article class="article">
+<h2>Как рассчитать обои</h2>
+<ol>
+<li>Считаем площадь стен без окон и дверей и делим её на высоту — получаем ширину, которую нужно оклеить.</li>
+<li>Делим эту ширину на ширину рулона — получаем число полос.</li>
+<li>Длина полосы — высота стены плюс 10 см на подрезку. Если у обоев есть раппорт, длина округляется вверх до целого числа раппортов, а при смещённой подгонке добавляется ещё полраппорта.</li>
+<li>Считаем, сколько целых полос выходит из рулона, и делим на это число количество полос.</li>
+</ol>
+<h2>Что такое раппорт</h2>
+<p>Раппорт — расстояние, через которое повторяется рисунок. Он указан на этикетке рулона значком со стрелкой и числом в сантиметрах. Значок «→|←» со сдвигом означает подгонку со смещением, «0» или стрелка без числа — обои без подгонки.</p>
+<h2>Сколько рулонов на комнату — ориентиры</h2>
+<div class="table-wrap"><table>
+<tr><th>Комната, высота 2,7 м</th><th>Рулоны 0,53×10 м</th><th>Рулоны 1,06×10 м</th></tr>
+<tr><td>3×3 м (9 м²)</td><td>7</td><td>4</td></tr>
+<tr><td>3×4 м (12 м²)</td><td>8</td><td>4</td></tr>
+<tr><td>4×5 м (20 м²)</td><td>11</td><td>6</td></tr>
+</table></div>
+<p>Таблица — для обоев без подгонки рисунка, с одной дверью и одним окном.</p>
+</article>
+<article class="article">
+<h2>Частые вопросы</h2>
+<details><summary>Сколько рулонов обоев нужно на комнату 18 м²?</summary><p>Для комнаты 3×6 м с потолком 2,7 м и метровыми обоями без подгонки — около 6 рулонов. С раппортом 64 см и подгонкой понадобится больше: введите параметры в калькулятор.</p></details>
+<details><summary>Какие обои выгоднее — 0,53 или 1,06 м?</summary><p>Метровые клеить быстрее, швов вдвое меньше. Но в маленьких комнатах с большим количеством углов и проёмов от узких рулонов остаётся меньше обрезков.</p></details>
+<details><summary>Нужно ли вычитать окна и двери?</summary><p>Да, калькулятор вычитает их площадь. Обрезки обычно уходят на участки над дверью и под окном, поэтому отдельный запас на них не нужен.</p></details>
+</article>
+</main>
+<footer class="site-footer"><div class="wrap">
+<div>© 2026 РемонтКалк — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</div>
+<div><a href="plitka.html">Плитка</a> · <a href="oboi.html">Обои</a> · <a href="kraska.html">Краска</a> · <a href="laminat.html">Ламинат</a></div>
+</div></footer>
+<script src="assets/partners.js"></script>
+<script src="assets/calc.js"></script>
+</body>
+</html>
