@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Генератор страниц РемонтКалк.
+"""Генератор страниц сайта «Метраж».
 
 Все HTML-страницы, sitemap.xml и robots.txt собираются из этого файла:
 общая шапка, меню, подвал, SEO-разметка и тексты. Запуск из корня репозитория:
@@ -13,11 +13,14 @@
 """
 import json
 import os
+from urllib.parse import urlparse
 
 # ===== НАСТРОЙКИ =====
 # Базовый адрес сайта со слешем на конце. После переезда на свой домен
 # поменяйте здесь и пересоберите: обновятся canonical, og:url, sitemap и robots.
-SITE_URL = "https://conormcgregor645-wq.github.io/ai/"
+SITE_URL = "https://metrazh.online/"
+# Название сайта: шапка, подвал, og:site_name, заголовок страницы 404.
+SITE_NAME = "Метраж"
 # Дата для <lastmod> в sitemap.xml.
 LASTMOD = "2026-10-12"
 # Номер счётчика Метрики для <noscript> — тот же, что в assets/site.js.
@@ -27,20 +30,53 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E"
            "%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%90%3C/text%3E%3C/svg%3E")
 
-# Калькуляторы: файл, пункт меню, иконка, краткое описание для главной, группа.
+# Иконки материалов (линейные SVG из макета).
+_SVG = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E2226" stroke-width="1.6"{extra} aria-hidden="true">{body}</svg>'
+ICONS = {
+    "plitka": _SVG.format(extra=' stroke-linejoin="round"', body='<rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8" fill="#D9622B"/>'),
+    "oboi": _SVG.format(extra=' stroke-linejoin="round"', body='<path d="M5 4h11v16H5z"/><circle cx="16" cy="8" r="4" fill="#D9622B"/><path d="M8 8v8M11 8v8"/>'),
+    "kraska": _SVG.format(extra=' stroke-linejoin="round"', body='<rect x="3" y="3" width="15" height="6" rx="1" fill="#D9622B"/><path d="M18 6h3v5h-9v3M10 14h4v7h-4z"/>'),
+    "laminat": _SVG.format(extra=' stroke-linejoin="round"', body='<rect x="2" y="4" width="20" height="16"/><path d="M2 9.3h20M2 14.6h20M12 4v5.3M7 9.3v5.3M17 9.3v5.3M12 14.6V20"/><rect x="12" y="4" width="10" height="5.3" fill="#D9622B"/>'),
+    "shtukaturka": _SVG.format(extra=' stroke-linejoin="round"', body='<path d="M3 15l9-9 9 9z" fill="#D9622B"/><path d="M12 15v6"/>'),
+    "shpaklevka": _SVG.format(extra=' stroke-linejoin="round"', body='<path d="M4 4h16v7H4z" fill="#D9622B"/><path d="M12 11v4M10 15h4v6h-4z"/>'),
+    "gipsokarton": _SVG.format(extra=' stroke-linejoin="round"', body='<rect x="4" y="2" width="16" height="20"/>' + "".join(
+        f'<circle cx="{x}" cy="{y}" r="1" fill="#D9622B" stroke="none"/>' for y in (6, 12, 18) for x in (7, 17))),
+    "uteplitel": _SVG.format(extra=' stroke-linecap="round"', body='<rect x="2" y="4" width="20" height="16" fill="#F7E2D5"/><path d="M2 9c3-2 5 2 10 0s7 2 10 0M2 15c3-2 5 2 10 0s7 2 10 0" stroke="#D9622B"/>'),
+    "styazhka": _SVG.format(extra="", body='<rect x="2" y="14" width="20" height="6" fill="#D9622B"/><path d="M2 10h20M2 6h20"/>'),
+    "kirpich": _SVG.format(extra="", body='<rect x="2" y="4" width="20" height="16"/><path d="M2 9.3h20M2 14.6h20M9 4v5.3M16 4v5.3M5.5 9.3v5.3M12.5 9.3v5.3M19 9.3v5.3M9 14.6V20M16 14.6V20"/><rect x="12.5" y="9.3" width="6.5" height="5.3" fill="#D9622B"/>'),
+}
+
+# Калькуляторы: файл, пункт меню, название на карточке, подпись на карточке.
 CALCS = [
-    ("plitka.html", "Плитка", "🧱", "Количество плитки, упаковок, клея и затирки для пола и стен.", "finish"),
-    ("oboi.html", "Обои", "🧻", "Сколько рулонов нужно с учётом раппорта, окон и дверей.", "finish"),
-    ("kraska.html", "Краска", "🎨", "Литры и банки краски для стен и потолка, грунтовка.", "finish"),
-    ("laminat.html", "Ламинат", "🪵", "Упаковки ламината, подложка, плинтус и порожки.", "finish"),
-    ("shtukaturka.html", "Штукатурка", "🧰", "Мешки гипсовой или цементной штукатурки, маяки, грунтовка.", "finish"),
-    ("shpaklevka.html", "Шпаклёвка", "🪣", "Стартовая и финишная шпаклёвка в килограммах и мешках.", "finish"),
-    ("gipsokarton.html", "Гипсокартон", "📏", "Листы ГКЛ, профиль, подвесы и саморезы для стен, перегородок и потолка.", "rough"),
-    ("uteplitel.html", "Утеплитель", "🧶", "Плиты и упаковки утеплителя, пароизоляция, дюбели.", "rough"),
-    ("styazhka.html", "Стяжка", "🏗️", "Сухая смесь или цемент с песком для стяжки пола.", "rough"),
-    ("kirpich.html", "Кирпич", "🧱", "Количество кирпича, раствор, цемент и песок для кладки.", "rough"),
+    ("plitka.html", "Плитка", "Плитка", "Штуки, клей, затирка"),
+    ("oboi.html", "Обои", "Обои", "Рулоны с раппортом"),
+    ("kraska.html", "Краска", "Краска", "Литры и грунтовка"),
+    ("laminat.html", "Ламинат", "Ламинат", "Упаковки и подложка"),
+    ("shtukaturka.html", "Штукатурка", "Штукатурка", "Мешки по толщине"),
+    ("shpaklevka.html", "Шпаклёвка", "Шпаклёвка", "Старт и финиш"),
+    ("gipsokarton.html", "Гипсокартон", "Гипсокартон", "Листы и профиль"),
+    ("uteplitel.html", "Утеплитель", "Утеплитель", "Плиты и упаковки"),
+    ("styazhka.html", "Стяжка", "Стяжка пола", "Смесь по толщине"),
+    ("kirpich.html", "Кирпич", "Кирпич", "Штуки и раствор"),
 ]
-GROUPS = [("finish", "Отделка"), ("rough", "Черновые работы")]
+# В шапке — четыре главных калькулятора, текущий (если его среди них нет) и «Все калькуляторы».
+NAV_MAIN = ["plitka.html", "oboi.html", "kraska.html", "laminat.html"]
+CHECK = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9481A" stroke-width="2.4" '
+         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>')
+RULER = ('<svg class="logo-ruler" width="104" height="10" viewBox="0 0 104 10" aria-hidden="true">'
+         '<rect x="0" y="0" width="104" height="10" rx="2" fill="#D9622B"/><g stroke="#1E2226" stroke-width="1.2">'
+         + "".join(f'<line x1="{x}" y1="0" x2="{x}" y2="{6 if x == 6 else 7 if x == 56 else 4}"/>' for x in range(6, 100, 10))
+         + "</g></svg>")
+
+
+def icon(fn):
+    return ICONS[fn.split(".")[0]]
+
+
+def card(fn, name, desc):
+    return f'<a class="card" href="{fn}">{icon(fn)}<span class="card-name">{name}</span><span class="card-desc">{desc}</span></a>'
+
+
 
 
 # ---------- разметка полей формы ----------
@@ -86,29 +122,40 @@ def openings(show=None, hint="Площадь проёмов вычитается
             f'<p class="hint">{hint}</p><button type="button" class="btn" id="add-opening">+ Добавить проём</button></div>')
 
 
-def reserve(options, selected, label="Запас"):
-    return select("reserve", label, options, selected)
+def reserve(options, selected, label="Запас на подрезку"):
+    """Запас — кнопки-сегменты с подсказками. options: (значение %, подсказка)."""
+    out = h3(label) + '<div class="seg-cards" role="radiogroup" aria-label="' + label + '">'
+    for v, hint in options:
+        c = " checked" if v == selected else ""
+        out += (f'<input type="radio" id="s-reserve-{v}" name="reserve" value="{v}"{c}>'
+                f'<label for="s-reserve-{v}"><b>{v}%</b><span>{hint}</span></label>')
+    return out + "</div>"
 
 
 def price(label):
     return field("price", label + " (необяз.)", "")
 
 
-def calc_form(calc_type, inputs):
-    return f'''<section class="calc">
-<form class="panel" id="calc-form" data-calc="{calc_type}" autocomplete="off" novalidate>
-<h2>Параметры</h2>
+def calc_form(calc_type, inputs, plan_title):
+    return f'''<div class="calc">
+<form class="form-card" id="calc-form" data-calc="{calc_type}" autocomplete="off" novalidate aria-label="Параметры расчёта">
 {inputs}
 </form>
-<aside class="panel result-panel" id="result" aria-live="polite"></aside>
-</section>'''
+<aside class="calc-side" aria-label="Результат">
+<section class="result-card" id="result" aria-live="polite"></section>
+<section class="plan-card">
+<div class="plan-head"><span class="plan-title">{plan_title}</span><span class="plan-label" id="plan-label"></span></div>
+<svg id="plan" viewBox="0 0 340 240" role="img" aria-label="{plan_title}"></svg>
+</section>
+</aside>
+</div>'''
 
 
 def table(head, rows):
-    out = '<div class="table-wrap"><table>\n<tr>' + "".join(f"<th>{h}</th>" for h in head) + "</tr>\n"
+    out = '<div class="table-wrap"><table>\n<thead><tr>' + "".join(f'<th scope="col">{h}</th>' for h in head) + "</tr></thead>\n<tbody>\n"
     for r in rows:
         out += "<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>\n"
-    return out + "</table></div>"
+    return out + "</tbody></table></div>"
 
 
 def ru(x, digits=0):
@@ -122,9 +169,26 @@ AD_SLOT = '''<!-- Реклама РСЯ: ID блока (RSY_BLOCK_ID) задаё
 
 # ---------- шаблон страницы ----------
 
-def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_sitemap=True):
-    nav = "".join(
-        f'<a href="{h}"{" aria-current=\"page\"" if h == fn else ""}>{t}</a>' for h, t, *_ in CALCS)
+def faq_html(faq, open_cards=False):
+    """Блок «Частые вопросы». На главной — открытые карточки, на калькуляторах — раскрывающиеся."""
+    if open_cards:
+        items = "".join(f'<div class="faq-card"><h3>{q}</h3><p>{a}</p></div>' for q, a in faq)
+    else:
+        items = "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in faq)
+    return f'<h2>Частые вопросы</h2>\n<div class="faq">{items}</div>'
+
+
+def nav_html(fn):
+    files = list(NAV_MAIN)
+    if fn in {c[0] for c in CALCS} and fn not in files:
+        files.append(fn)
+    labels = {c[0]: c[1] for c in CALCS}
+    links = "".join(f'<a href="{h}"{" aria-current=\"page\"" if h == fn else ""}>{labels[h]}</a>' for h in files)
+    all_href = "#calc" if fn == "index.html" else "index.html#calc"
+    return links + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
+
+
+def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main=""):
     canon = SITE_URL + ("" if fn == "index.html" else fn)
 
     ld = []
@@ -136,20 +200,16 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
         ld.append({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
             {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faq]})
     if crumb:
-        ld.append({"@context": "https://schema.org", "@type": "WebApplication", "name": h1, "url": canon,
+        ld.append({"@context": "https://schema.org", "@type": "WebApplication", "name": crumb, "url": canon,
                    "applicationCategory": "UtilitiesApplication", "operatingSystem": "Any",
                    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "RUB"}})
     ldhtml = "".join(f'\n<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
 
-    bc = f'<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a> → {crumb}</nav>' if crumb else ""
-    faqhtml = ""
-    if faq:
-        faqhtml = '<h2>Частые вопросы</h2>\n' + "\n".join(
-            f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in faq)
     is_calc = fn in {c[0] for c in CALCS}
     scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/calc.js"></script>' if is_calc else ""
     robots_meta = f'\n<meta name="robots" content="{robots}">' if robots else ""
     footer_links = '<a href="index.html">Все калькуляторы</a>' + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
+    host = urlparse(SITE_URL).hostname
 
     html = f'''<!doctype html>
 <html lang="ru">
@@ -161,41 +221,30 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
 <link rel="canonical" href="{canon}">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:site_name" content="РемонтКалк">
+<meta property="og:site_name" content="{SITE_NAME}">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{canon}">
-<meta name="theme-color" content="#d9622b">
+<meta name="theme-color" content="#1E2226">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
 <!-- <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE"> -->
 <link rel="icon" href="{FAVICON}">
-<link rel="stylesheet" href="assets/style.css">
-<script>document.documentElement.className += " js";</script>{ldhtml}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css">{ldhtml}
 </head>
 <body>
-<header class="site-header"><div class="wrap">
-<a class="logo" href="index.html">📐 Ремонт<span>Калк</span></a>
-<button type="button" class="burger" aria-label="Меню калькуляторов" aria-expanded="false" aria-controls="site-nav">
-<svg class="i-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-<svg class="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-</button>
-<nav class="nav" id="site-nav" aria-label="Калькуляторы">{nav}</nav>
+<header class="site-header"><div class="wrap header-bar">
+<a class="logo" href="index.html"><span class="logo-name">{SITE_NAME}</span>{RULER}</a>
+<nav class="nav" aria-label="Основное меню">{nav_html(fn)}</nav>
 </div></header>
-<main class="wrap">
-<section class="hero">
-{bc}
-<h1>{h1}</h1>
-<p>{lead}</p>
-</section>
-{body}
-<article class="article">
-{faqhtml}
-</article>
-</main>
+{main_html}{after_main}
 <footer class="site-footer"><div class="wrap">
-<div>© 2026 РемонтКалк — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</div>
+<p class="footer-text"><strong>{SITE_NAME}</strong> · {host} — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</p>
+<span class="footer-copy">© 2026</span>
 <nav class="footer-links" aria-label="Все калькуляторы">{footer_links}</nav>
 </div></footer>
 <!-- Яндекс Метрика: код счётчика в assets/site.js, здесь — запасной вариант без JavaScript -->
@@ -212,40 +261,85 @@ def page(fn, title, desc, h1, lead, body, faq=None, crumb=None, robots=None, in_
 
 SITEMAP = []
 
+MBAR = '''
+<div class="mbar" id="mbar" aria-hidden="true">
+<span class="mbar-main"><span class="mbar-cap">Нужно купить</span><span class="mbar-big" id="mbar-big">—</span></span>
+<span class="mbar-sub" id="mbar-sub"></span>
+</div>'''
 
-def calc_page(fn, title, desc, h1, lead, calc_type, inputs, how, norms, faq):
-    """Страница калькулятора: форма, реклама, «Как считается», нормы расхода, FAQ."""
-    body = (calc_form(calc_type, inputs) + "\n" + AD_SLOT + "\n<article class=\"article\">\n<h2>Как считается</h2>\n"
-            + how + "\n<h2>Нормы расхода</h2>\n" + norms + "\n</article>")
-    page(fn, title, desc, h1, lead, body, faq, crumb=h1)
+
+def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how, norms, faq):
+    """Страница калькулятора: форма и результат, схема, покупка, реклама, «Как считается», нормы, FAQ."""
+    main = f'''<main class="wrap calc-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>{h1}</span></nav>
+<div class="calc-head"><h1>{h1}</h1><span class="calc-tagline">Формулы как у мастеров · Без регистрации</span></div>
+{calc_form(calc_type, inputs, plan_title)}
+<section class="buy-card" id="buy" data-title="{buy_title}"></section>
+{AD_SLOT}
+<article class="article">
+<h2>Как считается</h2>
+{how}
+<h2>Нормы расхода</h2>
+{norms}
+{faq_html(faq)}
+</article>
+</main>'''
+    page(fn, title, desc, main, faq, crumb=h1, after_main=MBAR)
 
 
 # ---------- главная ----------
 
 def build_index():
-    cards = ""
-    for gid, gname in GROUPS:
-        cards += f'<h2 class="group-title">{gname}</h2>\n<section class="cards">'
-        for h, t, icon, d, g in CALCS:
-            if g == gid:
-                cards += (f'<a class="card" href="{h}"><span class="icon" aria-hidden="true">{icon}</span>'
-                          f'<h2>{t}</h2><p>{d}</p><span class="go">Рассчитать →</span></a>')
-        cards += "</section>\n"
-    text = '''<article class="article">
-<h2>Как пользоваться</h2>
-<p>Выберите материал, введите размеры комнаты — результат пересчитывается сразу. Размеры помещения запоминаются, поэтому в соседнем калькуляторе их не нужно вводить заново. Расчётом можно поделиться ссылкой или распечатать его для магазина.</p>
-<h2>Почему всегда нужен запас</h2>
-<p>Материал режется по краям, бьётся при подрезке, а через месяц ту же партию в магазине можно уже не найти — у плитки, обоев и ламината разных партий отличается оттенок. Поэтому калькуляторы закладывают запас 5–15% в зависимости от материала и способа укладки.</p>
-</article>'''
+    pills = "".join(f'<span class="pill">{CHECK}{t}</span>'
+                    for t in ("Формулы как у мастеров", "Учитываем окна и двери", "Бесплатно, без регистрации"))
+    cards = "".join(card(h, name, d) for h, _, name, d in CALCS)
+    faq = [("Насколько точен расчёт?", "Калькуляторы используют те же формулы, что и мастера: площадь поверхности за вычетом проёмов плюс запас на подрезку. Итог округляется вверх до целых штук, рулонов, мешков и упаковок."),
+           ("Почему всегда нужен запас?", "Материал режется по краям и бьётся при подрезке, а через месяц ту же партию можно уже не найти: оттенок у разных партий отличается. Поэтому закладываем 5–15% в зависимости от укладки."),
+           ("Нужно ли вводить размеры в каждом калькуляторе?", "Нет. Длина, ширина и высота комнаты сохраняются в браузере и подставляются в другие калькуляторы автоматически."),
+           ("Можно ли сохранить расчёт?", "Да. Кнопка «Поделиться» отправляет ссылку со всеми введёнными значениями, а «Распечатать» выводит результат на бумагу без лишних элементов страницы.")]
+    steps = [("01", "Выберите материал", "Плитка, обои, ламинат или любой из десяти калькуляторов."),
+             ("02", "Введите размеры", "Длина, ширина, высота, окна и двери. Размеры запоминаются для других калькуляторов."),
+             ("03", "Идите в магазин", "Штуки, упаковки и мешки, округлённые вверх. Распечатайте или отправьте ссылкой.")]
+    steps_html = "".join(f'<div class="step"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></div>' for n, t, d in steps)
+    # Пример: пол 3×2 м, плитка 30×30, запас 10% → 74 плитки, по 11 шт. в упаковке → 7 упаковок.
+    demo_svg = '''<svg viewBox="0 0 340 200" role="img" aria-label="План пола 3 на 2 метра, разложенный плиткой 30 на 30 сантиметров">
+<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#F7E2D5"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
+<rect x="40" y="30" width="260" height="156" fill="url(#hTiles)" stroke="#1E2226" stroke-width="2"/>
+<g stroke="#1E2226" stroke-width="1"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
+<rect x="148" y="5" width="44" height="18" fill="#FFFDF9"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
+<rect x="303" y="99" width="30" height="18" fill="#FFFDF9"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0</text>
+</svg>'''
+    main = f'''<main>
+<section class="wrap home-hero" id="calc">
+<h1>Сколько материала нужно на&nbsp;ремонт?</h1>
+<div class="pills">{pills}</div>
+<div class="cards">{cards}</div>
+</section>
+<section class="wrap demo">
+<div class="demo-text">
+<span class="eyebrow">Как это выглядит</span>
+<h2>Вводите размеры и сразу видите, сколько покупать</h2>
+<p>Калькулятор рисует комнату в масштабе, раскладывает материал и округляет итог вверх до целых упаковок. Расчёт можно отправить мастеру или распечатать для магазина.</p>
+<a class="btn-primary" href="plitka.html">Попробовать на плитке</a>
+</div>
+<div class="demo-card">
+<div class="demo-head"><span class="demo-title">Пол ванной</span><span class="demo-meta">плитка 30×30</span></div>
+{demo_svg}
+<div class="demo-total"><span class="demo-big">74 плитки</span><span class="demo-sub">7 упаковок по 11 шт. · запас 10%</span></div>
+</div>
+</section>
+<section class="steps"><div class="wrap">
+<h2>Три шага до списка покупок</h2>
+<div class="steps-grid">{steps_html}</div>
+</div></section>
+<section class="wrap home-faq">
+{faq_html(faq, open_cards=True)}
+</section>
+</main>'''
     page("index.html",
          "Калькулятор ремонта — расчёт плитки, обоев, краски, штукатурки и других материалов",
          "Бесплатные строительные калькуляторы: плитка, обои, краска, ламинат, штукатурка, шпаклёвка, гипсокартон, утеплитель, стяжка и кирпич. С учётом окон, дверей и запаса.",
-         "Калькулятор ремонта комнаты",
-         "Посчитайте, сколько нужно материалов на ремонт — с учётом окон, дверей и запаса на подрезку. Бесплатно и без регистрации.",
-         cards + text,
-         [("Насколько точен расчёт?", "Калькуляторы используют те же формулы, что и мастера: площадь поверхности за вычетом проёмов плюс запас на подрезку. Итог округляется вверх до целых штук, рулонов, мешков и упаковок."),
-          ("Нужно ли вводить размеры в каждом калькуляторе?", "Нет. Длина, ширина и высота комнаты сохраняются в браузере и подставляются в другие калькуляторы автоматически."),
-          ("Можно ли сохранить расчёт?", "Да. Кнопка «Ссылка на расчёт» копирует адрес со всеми введёнными значениями, а «Печать» выводит результат на бумагу без лишних элементов страницы.")])
+         main, faq)
 
 
 # ---------- калькуляторы ----------
@@ -255,10 +349,9 @@ def build_tile():
               + ROOM3 + openings("surface:walls,both")
               + h3("Плитка") + grid(field("tile_w", "Ширина, см", "30"), field("tile_h", "Длина, см", "60"),
                                     field("per_pack", "Штук в упаковке", "8", "number", ' min="0" step="1"'))
-              + grid(field("joint", "Шов, мм", "2"), field("thickness", "Толщина, мм", "9"),
-                     reserve([("5", "5% — прямая, крупная комната"), ("10", "10% — прямая укладка"),
-                              ("15", "15% — диагональ"), ("20", "20% — сложная раскладка")], "10"), top=True)
-              + grid(price("Цена, ₽/м²"), top=True))
+              + grid(field("joint", "Шов, мм", "2"), field("thickness", "Толщина, мм", "9"), top=True)
+              + reserve([("5", "крупная комната"), ("10", "прямая укладка"), ("15", "диагональ"), ("20", "сложная")], "10")
+              + grid(price("Цена, ₽ за м²"), top=True))
     how = '''<p>Площадь пола — длина × ширина. Площадь стен — периметр × высота минус площадь дверей и окон. Площадь делится на площадь одной плитки и увеличивается на запас: 10% при прямой укладке и 15% при диагональной. Результат округляется вверх до целой плитки, а затем — до целых упаковок.</p>
 <p>Затирка считается по формуле: (A + B) / (A × B) × толщина плитки × ширина шва × 1,6 кг/м², где A и B — стороны плитки в мм, 1,6 — плотность смеси. Калькулятор добавляет 10% запаса.</p>'''
     norms = table(["Размер плитки", "Зубчатый шпатель", "Клей, кг/м²"],
@@ -267,8 +360,7 @@ def build_tile():
               "Калькулятор плитки — сколько нужно плитки, клея и затирки на пол и стены",
               "Онлайн-калькулятор плитки: количество плиток и упаковок для пола и стен ванной, расход плиточного клея и затирки с учётом швов и запаса.",
               "Калькулятор плитки",
-              "Сколько плитки нужно на пол или стены: штуки, упаковки, клей, затирка и крестики.",
-              "tile", inputs, how, norms,
+              "tile", "Купить плитку и клей", "Схема пола", inputs, how, norms,
               [("Какой запас плитки брать?", "При прямой укладке — 10%, при диагональной — 15%, для сложных раскладок (ёлочка, модульная) — до 20%. Для крупного формата от 60×60 запас лучше не уменьшать: такую плитку сложно резать без сколов."),
                ("Как посчитать плитку для ванной?", "Выберите «Пол и стены», введите размеры ванной и добавьте дверь. Если стены облицовываются не до потолка, укажите вместо высоты комнаты высоту укладки."),
                ("Сколько клея нужно на 1 м² плитки?", "В среднем 3,5–6 кг на м² в зависимости от размера плитки и ровности основания. Точный расход указан на мешке клея.")])
@@ -294,8 +386,7 @@ def build_wallpaper():
               "Калькулятор обоев — сколько рулонов нужно на комнату",
               "Рассчитайте, сколько рулонов обоев нужно на комнату: учёт раппорта, ширины рулона 0,53 или 1,06 м, окон и дверей. Клей и обрезки.",
               "Калькулятор обоев",
-              "Сколько рулонов обоев нужно на комнату — с учётом раппорта, окон и дверей.",
-              "wallpaper", inputs, how, norms,
+              "wallpaper", "Купить обои и клей", "План комнаты", inputs, how, norms,
               [("Сколько рулонов обоев нужно на комнату 18 м²?", "Для комнаты 3×6 м с потолком 2,7 м и метровыми обоями без подгонки — около 6 рулонов. С раппортом 64 см и подгонкой понадобится больше: введите параметры в калькулятор."),
                ("Какие обои выгоднее — 0,53 или 1,06 м?", "Метровые клеить быстрее, швов вдвое меньше. Но в маленьких комнатах с большим количеством углов и проёмов от узких рулонов остаётся меньше обрезков."),
                ("Нужно ли вычитать окна и двери?", "Да, калькулятор вычитает их площадь. Обрезки обычно уходят на участки над дверью и под окном, поэтому отдельный запас на них не нужен.")])
@@ -308,8 +399,8 @@ def build_paint():
                                     field("coverage", "Расход, м²/л на слой", "9"),
                                     select("can", "Объём тары", [("0.9", "0,9 л"), ("2.5", "2,5 л"), ("2.7", "2,7 л"), ("4.5", "4,5 л"),
                                                                  ("5", "5 л"), ("9", "9 л"), ("10", "10 л")], "9"))
-              + grid(reserve([("0", "без запаса"), ("5", "5%"), ("10", "10%"), ("15", "15% — пористая поверхность")], "10"),
-                     price("Цена тары, ₽"), top=True)
+              + reserve([("0", "без запаса"), ("5", "ровные стены"), ("10", "обычно"), ("15", "пористая поверхность")], "10", "Запас")
+              + grid(price("Цена тары, ₽"), top=True)
               + '<p class="hint">Расход указан на банке: обычно 8–12 м² на литр для одного слоя. Для тёмных цветов и фактурных стен берите меньшее значение.</p>')
     how = '''<p>Литры = площадь × количество слоёв ÷ расход (м²/л) + запас. Площадь стен — периметр × высота минус окна и двери, площадь потолка равна площади пола. Результат округляется вверх до 0,1 л, количество банок — вверх до целых.</p>
 <p>Перед покраской стены грунтуют: грунтовка уменьшает впитываемость и экономит до трети краски.</p>'''
@@ -320,8 +411,7 @@ def build_paint():
               "Калькулятор краски — сколько литров нужно на стены и потолок",
               "Онлайн-расчёт краски для стен и потолка: литры и количество банок с учётом слоёв, расхода, окон и дверей. Плюс грунтовка и малярный скотч.",
               "Калькулятор краски",
-              "Сколько краски нужно на стены и потолок: литры, банки, грунтовка.",
-              "paint", inputs, how, norms,
+              "paint", "Купить краску и грунтовку", "План комнаты", inputs, how, norms,
               [("Сколько слоёв краски наносить?", "Обычно два. Один слой допустим при обновлении того же цвета, три — при перекрашивании тёмной стены в светлый цвет."),
                ("Сколько краски нужно на 1 м² стены?", "При двух слоях и расходе 10 м²/л — около 0,2 л на квадратный метр."),
                ("Что значит расход на банке?", "Это площадь, которую покрывает литр краски в один слой на ровной загрунтованной поверхности. На шероховатых и непрогрунтованных стенах расход выше.")])
@@ -330,9 +420,9 @@ def build_paint():
 def build_laminate():
     inputs = (ROOM2
               + h3("Ламинат") + grid(field("pack", "Площадь в упаковке, м²", "2.131"),
-                                     reserve([("5", "Прямая, 5%"), ("7", "Прямая, 7%"), ("10", "Прямая, сложная комната, 10%"),
-                                              ("15", "Диагональная, 15%")], "7", "Укладка"),
-                                     price("Цена упаковки, ₽"))
+                                     field("board_l", "Длина доски, мм", "1380"), field("board_w", "Ширина доски, мм", "193"))
+              + reserve([("5", "прямая, простая комната"), ("7", "прямая укладка"), ("10", "сложная комната"), ("15", "диагональ")], "7", "Укладка и запас")
+              + grid(price("Цена упаковки, ₽"), top=True)
               + h3("Двери, подложка, плинтус") + grid(field("doors", "Дверей", "1", "number", ' min="0" step="1"'), field("door_w", "Ширина двери, м", "0.8"))
               + grid(field("underlay", "Подложка в рулоне, м²", "10"), field("plinth", "Длина плинтуса, м", "2.5"), cols=2, top=True))
     how = '''<p>Площадь пола умножается на коэффициент подрезки (5–7% для прямой укладки, около 15% для диагональной) и делится на площадь одной упаковки. Результат округляется вверх до целой упаковки. Площадь в упаковке указана на торце коробки.</p>
@@ -344,8 +434,7 @@ def build_laminate():
               "Калькулятор ламината — сколько упаковок нужно на комнату",
               "Рассчитайте ламинат на комнату: количество упаковок с учётом способа укладки, подложка, плинтус, заглушки и порожки.",
               "Калькулятор ламината",
-              "Сколько упаковок ламината нужно на комнату, плюс подложка и плинтус.",
-              "laminate", inputs, how, norms,
+              "laminate", "Купить ламинат и подложку", "Схема пола", inputs, how, norms,
               [("Какой запас ламината брать?", "5–7% при прямой укладке и 10–15% при диагональной или в комнате со множеством выступов."),
                ("Сколько ламината нужно на 20 м²?", "При упаковке 2,131 м² и прямой укладке с запасом 7% — 11 упаковок."),
                ("Нужно ли учитывать площадь под мебелью?", "Да. Ламинат — плавающее покрытие, его укладывают по всей комнате, включая места под шкафами.")])
@@ -360,7 +449,8 @@ def build_plaster():
               + h3("Смесь") + grid(select("mix", "Тип штукатурки", [("0.9", "Гипсовая"), ("1.7", "Цементная"), ("1.5", "Цементно-известковая")], "0.9"),
                                    field("thickness", "Средний слой, мм", "15"),
                                    select("bag", "Мешок", [("25", "25 кг"), ("30", "30 кг")], "30"))
-              + grid(reserve([("5", "5%"), ("10", "10%"), ("15", "15%")], "10"), price("Цена мешка, ₽"), top=True)
+              + reserve([("5", "ровные стены"), ("10", "рекомендуем"), ("15", "сложные стены")], "10", "Запас")
+              + grid(price("Цена мешка, ₽"), top=True)
               + '<p class="hint">Средний слой — разница между самой выступающей и самой утопленной точкой стены, делённая на два, плюс 5 мм над маяком.</p>')
     how = '''<p>Масса смеси = площадь × средняя толщина слоя (мм) × расход на 1 мм + запас. Количество мешков округляется вверх. Площадь стен — периметр × высота минус окна и двери, площадь потолка равна площади пола.</p>
 <p>Маяки ставят вертикально с шагом не больше 1,5 м, чтобы двухметровое правило всегда опиралось на два маяка, плюс по одному у каждого угла. Грунтовку закладываем из расчёта 0,15 л на м².</p>'''
@@ -371,8 +461,7 @@ def build_plaster():
               "Калькулятор штукатурки — расход на стены и потолок, сколько мешков",
               "Калькулятор штукатурки онлайн: сколько мешков гипсовой или цементной штукатурки нужно на стены и потолок, маяки и грунтовка с учётом толщины слоя.",
               "Калькулятор штукатурки",
-              "Сколько мешков штукатурки нужно на стены и потолок — с учётом толщины слоя, окон и дверей.",
-              "plaster", inputs, how, norms,
+              "plaster", "Купить штукатурку и маяки", "План комнаты", inputs, how, norms,
               [("Как определить толщину слоя штукатурки?", "Приложите к стене правило или натяните нить и найдите самую выступающую и самую утопленную точки. Средний слой — половина разницы между ними плюс 5–6 мм толщины маяка."),
                ("Сколько штукатурки нужно на 1 м² стены?", "Гипсовой — около 9 кг при слое 10 мм, цементной — около 17 кг. Точный расход указан на мешке."),
                ("Какую штукатурку выбрать — гипсовую или цементную?", "Гипсовая подходит для сухих комнат: легче наносится и не требует финишной шпаклёвки под обои. Цементная — для ванных, кухонь и неотапливаемых помещений."),
@@ -386,7 +475,7 @@ def build_putty():
                                             field("start_bag", "Мешок, кг", "25"))
               + h3("Финишный слой") + grid(field("finish_mm", "Толщина, мм", "1"), field("finish_rate", "Расход, кг/м² на 1 мм", "1.2"),
                                            field("finish_bag", "Мешок, кг", "20"))
-              + grid(reserve([("5", "5%"), ("10", "10%"), ("15", "15%")], "10"), top=True)
+              + reserve([("5", "ровные стены"), ("10", "рекомендуем"), ("15", "сложные стены")], "10", "Запас")
               + '<p class="hint">Поставьте толщину 0, если слой не нужен: например, по ровной штукатурке хватает одного финиша.</p>')
     how = '''<p>Для каждого слоя: масса = площадь × толщина (мм) × расход на 1 мм + запас. Мешки округляются вверх отдельно для стартовой и финишной шпаклёвки.</p>
 <p>Перед каждым слоем стену грунтуют — около 0,1 л на м². Абразивная сетка: примерно 1 лист на 10 м² шлифовки.</p>'''
@@ -398,8 +487,7 @@ def build_putty():
               "Калькулятор шпаклёвки — расход стартовой и финишной шпаклёвки на м²",
               "Калькулятор шпаклёвки для стен и потолка: сколько килограммов и мешков стартовой и финишной шпаклёвки нужно на комнату, грунтовка и абразив.",
               "Калькулятор шпаклёвки",
-              "Сколько стартовой и финишной шпаклёвки нужно на стены и потолок.",
-              "putty", inputs, how, norms,
+              "putty", "Купить шпаклёвку", "План комнаты", inputs, how, norms,
               [("Сколько шпаклёвки нужно на 1 м² стены?", "Финишной — около 1–1,2 кг при слое 1 мм, стартовой — 2–3 кг при слое 2–3 мм."),
                ("Нужна ли стартовая шпаклёвка?", "Если стена оштукатурена по маякам или это гипсокартон, обычно хватает финиша. Стартовая нужна, чтобы убрать неровности 1–5 мм."),
                ("Сколько слоёв финишной шпаклёвки наносить?", "Обычно два тонких слоя по 0,5–1 мм. Под покраску стену после второго слоя шлифуют и проверяют на свет."),
@@ -414,8 +502,8 @@ def build_drywall():
               + h3("Лист и каркас") + grid(select("sheet", "Лист ГКЛ", [("3", "2500×1200 мм"), ("3.6", "3000×1200 мм"), ("2.4", "2000×1200 мм")], "3"),
                                            select("layers", "Слоёв листов", [("1", "1"), ("2", "2")], "1"),
                                            select("step", "Шаг профиля", [("0.6", "600 мм"), ("0.4", "400 мм")], "0.6"))
-              + grid(select("profile_len", "Длина профиля", [("3", "3 м"), ("4", "4 м")], "3"),
-                     reserve([("5", "5%"), ("10", "10%"), ("15", "15%")], "10"), price("Цена листа, ₽"), top=True))
+              + grid(select("profile_len", "Длина профиля", [("3", "3 м"), ("4", "4 м")], "3"), price("Цена листа, ₽"), top=True)
+              + reserve([("5", "простая форма"), ("10", "рекомендуем"), ("15", "много проёмов")], "10"))
     how = '''<p>Листы: площадь обшивки × число слоёв + запас, делённые на площадь листа, с округлением вверх. Перегородку обшивают с двух сторон.</p>
 <ul>
 <li><b>Обшивка стен:</b> стойки ПП 60×27 с выбранным шагом вдоль каждой стены плюс по одной у угла, направляющий ПН 28×27 по полу и потолку, прямые подвесы с шагом до 1 м по высоте стойки.</li>
@@ -431,8 +519,7 @@ def build_drywall():
               "Калькулятор гипсокартона — листы, профиль, подвесы и саморезы",
               "Калькулятор гипсокартона онлайн: сколько листов ГКЛ, профиля ПП и ПН, подвесов, саморезов и дюбелей нужно на обшивку стен, перегородку или потолок.",
               "Калькулятор гипсокартона",
-              "Листы ГКЛ, профиль, подвесы и крепёж для обшивки стен, перегородки или потолка.",
-              "drywall", inputs, how, norms,
+              "drywall", "Купить гипсокартон и профиль", "План комнаты", inputs, how, norms,
               [("Какой шаг профиля выбрать?", "Стандартный шаг стоек — 600 мм, под ширину листа 1200 мм. Шаг 400 мм делают под тяжёлую плитку, в двухслойной обшивке потолка и при высоте стены больше 3 м."),
                ("Сколько саморезов нужно на лист гипсокартона?", "На лист 2500×1200 уходит 60–75 саморезов: шаг 25 см по краям и 30 см в середине листа."),
                ("Какой гипсокартон взять для ванной?", "Влагостойкий ГКЛВ (зелёный) толщиной 12,5 мм. Для потолка подойдёт и облегчённый 9,5 мм."),
@@ -445,8 +532,8 @@ def build_insulation():
               + h3("Утеплитель") + grid(select("total_mm", "Толщина утепления", [("50", "50 мм"), ("100", "100 мм"), ("150", "150 мм"), ("200", "200 мм")], "100"),
                                         field("board_t", "Толщина плиты, мм", "50"), field("per_pack", "Плит в упаковке", "8", "number", ' min="0" step="1"'))
               + grid(field("board_l", "Длина плиты, мм", "1200"), field("board_w", "Ширина плиты, мм", "600"),
-                     reserve([("3", "3%"), ("5", "5%"), ("10", "10%")], "5"), top=True)
-              + grid(price("Цена упаковки, ₽"), top=True))
+                     price("Цена упаковки, ₽"), top=True)
+              + reserve([("3", "минимум"), ("5", "рекомендуем"), ("10", "сложная форма")], "5"))
     how = '''<p>Число слоёв = требуемая толщина ÷ толщина плиты (вверх). Плиты = площадь × слои + запас, делённые на площадь одной плиты, с округлением вверх. Затем плиты пересчитываются в упаковки.</p>
 <p>Пароизоляцию кладут с нахлёстом 10 см — плюс 10% к площади. Для стен добавляем тарельчатые дюбели — около 6 штук на м².</p>'''
     norms = table(["Материал", "Типовая плита", "В упаковке"],
@@ -457,8 +544,7 @@ def build_insulation():
               "Калькулятор утеплителя — сколько плит и упаковок нужно",
               "Калькулятор утеплителя: сколько плит и упаковок минваты или пенополистирола нужно на стены, пол или перекрытие, объём в м³, пароизоляция и дюбели.",
               "Калькулятор утеплителя",
-              "Сколько плит и упаковок утеплителя нужно на стены или перекрытие.",
-              "insulation", inputs, how, norms,
+              "insulation", "Купить утеплитель", "План комнаты", inputs, how, norms,
               [("Какую толщину утеплителя выбрать?", "Для стен в средней полосе России обычно хватает 100–150 мм минваты, для перекрытий и мансард — 150–200 мм. Точную толщину даёт теплотехнический расчёт по СП 50.13330."),
                ("Как пересчитать утеплитель в кубометры?", "Площадь × толщину в метрах: 30 м² × 0,1 м = 3 м³. Калькулятор показывает объём, а на упаковке указаны и площадь, и объём."),
                ("Нужна ли пароизоляция?", "При утеплении изнутри и в каркасных конструкциях — да, с тёплой стороны. Без неё влага из комнаты конденсируется в утеплителе."),
@@ -467,8 +553,8 @@ def build_insulation():
 
 def build_screed():
     inputs = (ROOM2
-              + h3("Стяжка") + grid(field("thickness", "Средняя толщина, мм", "50"),
-                                    reserve([("5", "5%"), ("10", "10%")], "5"), cols=2)
+              + h3("Стяжка") + grid(field("thickness", "Средняя толщина, мм", "50"))
+              + reserve([("5", "рекомендуем"), ("10", "неровное основание")], "5", "Запас")
               + h3("Материал") + seg("mix", [("ready", "Готовая сухая смесь"), ("diy", "Цемент и песок")], "ready")
               + grid(select("rate", "Смесь", [("2", "ЦПС М150 (2 кг/м²·мм)"), ("2.2", "Пескобетон М300 (2,2 кг/м²·мм)"),
                                               ("1.6", "Наливной пол (1,6 кг/м²·мм)")], "2", show="mix:ready"),
@@ -489,8 +575,7 @@ def build_screed():
               "Калькулятор стяжки пола — сколько смеси или цемента и песка нужно",
               "Калькулятор стяжки пола: расчёт мешков сухой смеси, цемента и песка по площади и толщине, фиброволокно, демпферная лента и армирующая сетка.",
               "Калькулятор стяжки пола",
-              "Сколько мешков смеси или цемента с песком нужно на стяжку пола.",
-              "screed", inputs, how, norms,
+              "screed", "Купить смесь для стяжки", "Схема пола", inputs, how, norms,
               [("Какой толщины делать стяжку?", "Цементно-песчаная стяжка по плите — от 30 мм, по утеплителю или разделительному слою — от 40 мм. Для тонкого выравнивания до 10–30 мм используют наливной пол."),
                ("Что выгоднее — готовая смесь или цемент с песком?", "Цемент с песком дешевле в 1,5–2 раза, но требуют точной дозировки и бетономешалки. Готовая смесь удобнее на небольших площадях."),
                ("Сколько мешков ЦПС нужно на 1 м² стяжки толщиной 5 см?", "Около 100 кг, то есть 2,5 мешка по 40 кг."),
@@ -506,7 +591,8 @@ def build_brick():
               + openings()
               + h3("Кирпич и кладка") + grid(select("brick", "Кирпич", bricks, "65"), select("wall", "Толщина стены", walls, "1"),
                                              field("joint", "Шов, мм", "10"))
-              + grid(reserve([("3", "3%"), ("5", "5%"), ("10", "10%")], "5"), price("Цена кирпича, ₽"), top=True))
+              + reserve([("3", "минимум"), ("5", "на бой"), ("10", "лицевой кирпич")], "5", "Запас на бой")
+              + grid(price("Цена кирпича, ₽"), top=True))
     how = '''<p>Площадь кладки — длина стен × высота минус окна и двери. На 1 м² стены в полкирпича уходит 1 / ((0,25 + шов) × (высота кирпича + шов)) кирпичей; стена в кирпич — вдвое больше, в полтора — втрое. Итог увеличивается на запас на бой и округляется вверх.</p>
 <p>Раствор = объём кладки минус объём самих кирпичей. Для раствора М100 (1 : 4) на 1 м³ берут около 338 кг цемента М500 и 1,04 м³ песка.</p>'''
 
@@ -519,8 +605,7 @@ def build_brick():
               "Калькулятор кирпича — сколько кирпича и раствора нужно на стену",
               "Калькулятор кирпича онлайн: количество одинарного, полуторного или двойного кирпича на стену или дом, объём раствора, цемент и песок с учётом проёмов.",
               "Калькулятор кирпича",
-              "Сколько кирпича и раствора нужно на стену или коробку дома — с учётом окон и дверей.",
-              "brick", inputs, how, norms,
+              "brick", "Купить кирпич и цемент", "План стен", inputs, how, norms,
               [("Сколько кирпича в 1 м² кладки?", "Одинарного с учётом швов: 51 шт. в полкирпича и 103 шт. в кирпич. Полуторного — 39 и 78, двойного — 26 и 52."),
                ("Сколько нужно раствора на кладку?", "Раствор занимает около 20–24% объёма кладки: на 1 м³ стены из одинарного кирпича (≈ 394 шт. с учётом швов) уходит 0,2–0,24 м³ раствора."),
                ("Какой запас кирпича брать?", "5% на бой при перевозке и подрезке. Лицевой кирпич лучше брать из одной партии с запасом 5–10%: оттенок разных партий отличается."),
@@ -528,11 +613,14 @@ def build_brick():
 
 
 def build_404():
-    links = "".join(f'<a class="card" href="{h}"><span class="icon" aria-hidden="true">{i}</span><h2>{t}</h2><span class="go">Рассчитать →</span></a>'
-                    for h, t, i, *_ in CALCS)
-    page("404.html", "Страница не найдена — РемонтКалк", "Такой страницы нет. Выберите калькулятор.",
-         "Страница не найдена", "Возможно, ссылка устарела. Выберите нужный калькулятор:",
-         f'<section class="cards">{links}</section>', robots="noindex", in_sitemap=False)
+    cards = "".join(card(h, name, d) for h, _, name, d in CALCS)
+    main = f'''<main class="wrap home-hero">
+<h1>Страница не найдена</h1>
+<p class="lead">Возможно, ссылка устарела. Выберите нужный калькулятор:</p>
+<div class="cards">{cards}</div>
+</main>'''
+    page("404.html", f"Страница не найдена — {SITE_NAME}", "Такой страницы нет. Выберите калькулятор.",
+         main, robots="noindex", in_sitemap=False)
 
 
 def build_seo_files():
@@ -542,6 +630,15 @@ def build_seo_files():
             prio = "1.0" if url == SITE_URL else "0.8"
             f.write(f"  <url><loc>{url}</loc><lastmod>{LASTMOD}</lastmod><priority>{prio}</priority></url>\n")
         f.write("</urlset>\n")
+    # CNAME для GitHub Pages: свой домен берётся из SITE_URL.
+    host = urlparse(SITE_URL).hostname
+    cname = os.path.join(ROOT, "CNAME")
+    if host.endswith(".github.io"):
+        if os.path.exists(cname):
+            os.remove(cname)
+    else:
+        with open(cname, "w", encoding="utf-8") as f:
+            f.write(host + "\n")
     with open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8") as f:
         f.write(f"User-agent: *\nAllow: /\nDisallow: /tools/\n\nSitemap: {SITE_URL}sitemap.xml\n")
 

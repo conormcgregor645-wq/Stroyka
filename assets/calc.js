@@ -144,68 +144,89 @@
     return p.wrap.replace("{url}", encodeURIComponent(url));
   }
 
-  function buyHtml(items) {
+  var buyEl = document.getElementById("buy");
+  var buyKey = "";
+
+  // Блок «Купить …» под калькулятором: кнопка на партнёрскую ссылку и «Сравнить цены» в магазинах.
+  function renderBuy(items) {
+    if (!buyEl) return;
     var partners = window.PARTNERS || [];
     var affiliate = window.AFFILIATE || {};
-    if (!items || !items.length) return "";
-    var html = '<div class="shop"><h3>Купить материал</h3>';
-    items.forEach(function (item) {
-      var aff = affiliate[item.key];
-      var hasAff = aff && aff.indexOf("AFFILIATE_URL_") !== 0;
-      // Пока партнёрская ссылка не вставлена, кнопка ведёт на поиск в первом магазине из списка.
-      var main = hasAff ? aff : partners[0] ? partnerUrl(partners[0], item.q) : "";
-      var alt = hasAff ? partners : partners.slice(1);
-      html += '<div class="buy-item"><div class="buy-head"><span class="name">' + esc(item.name) + "</span>";
-      if (item.qty) html += '<span class="qty">' + esc(item.qty) + "</span>";
-      html += "</div>";
-      if (main) {
-        html += '<a class="buy-btn" href="' + esc(main) + '" target="_blank" rel="sponsored nofollow noopener"' +
-          ' data-aff="' + esc(item.key) + '" data-shop="' + esc(hasAff ? "affiliate" : partners[0].name) + '">Купить →</a>';
-      }
-      if (alt.length) {
-        html += '<div class="buy-alt">Сравнить цены: ' + alt.map(function (p) {
-          return '<a href="' + esc(partnerUrl(p, item.q)) + '" target="_blank" rel="sponsored nofollow noopener"' +
-            ' data-aff="' + esc(item.key) + '" data-shop="' + esc(p.name) + '">' + esc(p.name) + "</a>";
-        }).join(" · ") + "</div>";
-      }
-      html += "</div>";
-    });
-    html += '<p class="disclosure">Ссылки на магазины могут быть партнёрскими: при покупке сайт получает небольшую комиссию, цена для вас не меняется.</p></div>';
-    return html;
+    var html = "";
+    if (items && items.length) {
+      html = "<h2>" + esc(buyEl.getAttribute("data-title") || "Купить материал") + "</h2>" +
+        '<p class="buy-lead">Посмотрите цены в строительном магазине с доставкой.</p>';
+      items.forEach(function (item) {
+        var aff = affiliate[item.key];
+        var hasAff = aff && aff.indexOf("AFFILIATE_URL_") !== 0;
+        // Пока партнёрская ссылка не вставлена, кнопка ведёт на поиск в первом магазине из списка.
+        var main = hasAff ? aff : partners[0] ? partnerUrl(partners[0], item.q) : "";
+        var alt = hasAff ? partners : partners.slice(1);
+        html += '<div class="buy-item"><div class="buy-info"><span class="buy-name">' + esc(item.name) + "</span>";
+        if (item.qty) html += '<span class="buy-qty">' + esc(item.qty) + "</span>";
+        html += "</div>";
+        if (main) {
+          html += '<a class="buy-btn" href="' + esc(main) + '" target="_blank" rel="sponsored nofollow noopener"' +
+            ' data-aff="' + esc(item.key) + '" data-shop="' + esc(hasAff ? "affiliate" : partners[0].name) + '">Перейти в магазин</a>';
+        }
+        if (alt.length) {
+          html += '<div class="buy-alt">Сравнить цены: ' + alt.map(function (p) {
+            return '<a href="' + esc(partnerUrl(p, item.q)) + '" target="_blank" rel="sponsored nofollow noopener"' +
+              ' data-aff="' + esc(item.key) + '" data-shop="' + esc(p.name) + '">' + esc(p.name) + "</a>";
+          }).join(" · ") + "</div>";
+        }
+        html += "</div>";
+      });
+      html += '<p class="disclosure">Ссылки на магазины могут быть партнёрскими: при покупке сайт получает небольшую комиссию, цена для вас не меняется.</p>';
+    }
+    // Перерисовываем только при изменении, чтобы не сбивать фокус и наведение.
+    if (html !== buyKey) {
+      buyKey = html;
+      buyEl.innerHTML = html;
+    }
   }
 
+  var barBig = document.getElementById("mbar-big");
+  var barSub = document.getElementById("mbar-sub");
   var lastText = "";
 
   function render(r) {
-    var html = "";
+    var html = '<span class="res-cap">Нужно купить</span>';
     if (r.error) {
-      html = '<div class="big-label">Результат</div><p class="warn">' + esc(r.error) + "</p>";
-      resultEl.innerHTML = html;
+      resultEl.innerHTML = html + '<p class="res-error">' + esc(r.error) + "</p>";
       lastText = "";
+      renderBuy(null);
+      if (barBig) barBig.textContent = "—";
+      if (barSub) barSub.textContent = "";
       return false;
     }
-    html += '<div class="big-label">' + esc(r.big.label) + "</div>";
-    html += '<div class="big">' + esc(r.big.value) + " <small>" + esc(r.big.unit) + "</small></div>";
-    html += '<ul class="res-list">';
+    var bigText = r.big.value + " " + r.big.unit;
+    // Итог должен влезать в карточку одной строкой: чем длиннее текст, тем мельче шрифт.
+    var n = bigText.length;
+    var size = n <= 9 ? "" : n <= 11 ? " mid" : n <= 14 ? " long" : " xlong";
+    html += '<div class="res-main"><span class="res-big' + size + '" data-value="' + esc(r.big.value) + '">' + esc(bigText) + "</span>";
+    if (r.sub) html += '<span class="res-sub">' + esc(r.sub) + "</span>";
+    html += '</div><ul class="res-rows">';
     r.rows.forEach(function (row) {
-      html += "<li><span>" + esc(row[0]) + "</span><b>" + esc(row[1]) + "</b></li>";
+      html += "<li" + (row[0].indexOf("Стоимость") === 0 ? ' class="cost"' : "") + "><span>" + esc(row[0]) + "</span><b>" + esc(row[1]) + "</b></li>";
     });
     html += "</ul>";
     (r.warn || []).forEach(function (w) {
-      html += '<p class="warn">' + esc(w) + "</p>";
+      html += '<p class="res-warn">' + esc(w) + "</p>";
     });
     html +=
-      '<div class="actions">' +
-      '<button type="button" data-act="copy">Скопировать расчёт</button>' +
-      '<button type="button" data-act="link">Ссылка на расчёт</button>' +
-      '<button type="button" data-act="print">Печать</button>' +
+      '<div class="res-actions">' +
+      '<button type="button" class="share" data-act="share">Поделиться</button>' +
+      '<button type="button" class="print" data-act="print">Распечатать</button>' +
       "</div>";
-    html += buyHtml(r.shop);
     resultEl.innerHTML = html;
+    renderBuy(r.shop);
+    if (barBig) barBig.textContent = bigText;
+    if (barSub) barSub.textContent = r.sub || "";
 
     lastText =
       document.title.split("—")[0].trim() + "\n" +
-      r.big.label + ": " + r.big.value + " " + r.big.unit + "\n" +
+      r.big.label + ": " + bigText + (r.sub ? " (" + r.sub + ")" : "") + "\n" +
       r.rows.map(function (row) { return row[0] + ": " + row[1]; }).join("\n");
     return true;
   }
@@ -217,26 +238,96 @@
   }
   function copy(text, btn) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { flash(btn, "Скопировано ✓"); },
+      navigator.clipboard.writeText(text).then(function () { flash(btn, "Ссылка скопирована ✓"); },
         function () { window.prompt("Скопируйте:", text); });
     } else {
       window.prompt("Скопируйте:", text);
     }
   }
+  // «Поделиться»: системное меню на телефоне, иначе — копируем ссылку со всеми параметрами.
+  function share(btn) {
+    var url = shareUrl();
+    if (navigator.share) {
+      navigator.share({ title: document.title, text: lastText, url: url }).catch(function () { /* отменено */ });
+    } else {
+      copy(url, btn);
+    }
+  }
 
   resultEl.addEventListener("click", function (e) {
-    var link = e.target.closest("a[data-aff]");
-    if (link) {
-      goal("affiliate_click", { calc: type, item: link.getAttribute("data-aff"), shop: link.getAttribute("data-shop") });
-      return;
-    }
     var btn = e.target.closest("button[data-act]");
     if (!btn) return;
     var act = btn.getAttribute("data-act");
-    if (act === "copy") copy(lastText, btn);
-    if (act === "link") copy(shareUrl(), btn);
+    if (act === "share") share(btn);
     if (act === "print") window.print();
   });
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest("a[data-aff]");
+    if (link) goal("affiliate_click", { calc: type, item: link.getAttribute("data-aff"), shop: link.getAttribute("data-shop") });
+  });
+
+  /* ---------- схема комнаты (SVG в масштабе) ---------- */
+
+  var planEl = document.getElementById("plan");
+  var planLabel = document.getElementById("plan-label");
+  var BRICK_DEPTH = { "0.5": 0.12, "1": 0.25, "1.5": 0.38, "2": 0.51 };
+
+  function drawPlan() {
+    if (!planEl) return;
+    var L = num("room_l"), W = num("room_w");
+    var surface = val("surface"), mode = val("mode");
+    var oneWall = type === "brick" && mode === "one";
+    if (oneWall) W = BRICK_DEPTH[val("wall")] || 0.25; // одна стена: рисуем её толщину
+    if (!(L > 0 && W > 0)) {
+      planEl.innerHTML = '<text x="170" y="124" text-anchor="middle" class="svg-hint">Введите длину и ширину</text>';
+      planEl.setAttribute("aria-label", "Схема появится после ввода размеров");
+      if (planLabel) planLabel.textContent = "";
+      return;
+    }
+    var walls = type === "wallpaper" || (type === "brick" && !oneWall) || (type === "drywall" && mode !== "ceiling") ||
+      surface === "walls" || surface === "both";
+    var floor = !(type === "wallpaper" || type === "brick" || (type === "drywall" && mode !== "ceiling") || surface === "walls");
+    var s = Math.min(250 / L, 180 / W);
+    var rw = Math.max(20, L * s), rh = Math.max(6, W * s);
+    var x0 = (310 - rw) / 2 + 4, y0 = 34 + (186 - rh) / 2;
+    var defs = "", fill = floor ? "pl-floor" : "pl-empty", label = fmt(L) + " × " + fmt(W) + " м", what = "План комнаты";
+
+    if (type === "tile" && floor) {
+      var tw = num("tile_w") / 100 * s, th = num("tile_h") / 100 * s;
+      label = "плитка " + fmt(num("tile_w"), 1) + "×" + fmt(num("tile_h"), 1) + " см";
+      what = "План пола с раскладкой плитки";
+      if (tw >= 3 && th >= 3) {
+        defs = '<pattern id="pl-pat" x="' + x0 + '" y="' + y0 + '" width="' + tw + '" height="' + th + '" patternUnits="userSpaceOnUse">' +
+          '<rect class="pl-tile" width="' + tw + '" height="' + th + '"/></pattern>';
+      }
+    }
+    if (type === "laminate") {
+      var bl = num("board_l") / 1000 * s, bw = num("board_w") / 1000 * s;
+      label = "доска " + Math.round(num("board_l")) + "×" + Math.round(num("board_w")) + " мм";
+      what = "План пола с раскладкой ламината";
+      if (bl >= 6 && bw >= 2) {
+        // Ряды досок со смещением на полдоски.
+        defs = '<pattern id="pl-pat" x="' + x0 + '" y="' + y0 + '" width="' + bl + '" height="' + 2 * bw + '" patternUnits="userSpaceOnUse">' +
+          '<rect class="pl-floor" width="' + bl + '" height="' + 2 * bw + '"/>' +
+          '<path class="pl-seam" d="M0 0V' + bw + "M0 " + bw + "H" + bl + "M" + bl / 2 + " " + bw + "V" + 2 * bw + "M0 " + 2 * bw + "H" + bl + '"/></pattern>';
+      }
+    }
+    if (oneWall) { label = "стена " + fmt(L) + " м, толщина " + fmt(W * 1000, 0) + " мм"; what = "Стена в плане"; }
+
+    var svg = defs ? "<defs>" + defs + "</defs>" : "";
+    svg += '<rect class="' + fill + '" x="' + x0 + '" y="' + y0 + '" width="' + rw + '" height="' + rh + '"' + (defs ? ' style="fill:url(#pl-pat)"' : "") + "/>";
+    if (walls) svg += '<rect class="pl-walls" x="' + x0 + '" y="' + y0 + '" width="' + rw + '" height="' + rh + '"/>';
+    svg += '<rect class="pl-room" x="' + x0 + '" y="' + y0 + '" width="' + rw + '" height="' + rh + '"/>';
+    // Размерные линии и подписи сторон.
+    var x1 = x0 + rw, y1 = y0 + rh, cx = x0 + rw / 2, cy = y0 + rh / 2;
+    svg += '<path class="pl-dim" d="M' + x0 + " 16H" + x1 + "M" + x0 + " 11V21M" + x1 + " 11V21M324 " + y0 + "V" + y1 + "M319 " + y0 + "H329M319 " + y1 + 'H329"/>';
+    var lt = fmt(L) + " м", wt = oneWall ? fmt(W * 1000, 0) : fmt(W);
+    svg += '<rect class="pl-box" x="' + (cx - 30) + '" y="7" width="60" height="18"/><text class="svg-num" x="' + cx + '" y="20" text-anchor="middle">' + esc(lt) + "</text>";
+    svg += '<rect class="pl-box" x="305" y="' + (cy - 9) + '" width="35" height="18"/><text class="svg-num" x="322" y="' + (cy + 4) + '" text-anchor="middle">' + esc(wt) + "</text>";
+    planEl.innerHTML = svg;
+    planEl.setAttribute("aria-label", what + " " + fmt(L) + " на " + fmt(W) + " м");
+    if (planLabel) planLabel.textContent = label;
+  }
 
   /* ---------- share via URL ---------- */
 
@@ -349,6 +440,7 @@
 
       return {
         big: { label: "Нужно плитки", value: fmt(count, 0), unit: plural(count, "плитка", "плитки", "плиток") },
+        sub: packs ? packs + " " + plural(packs, "упаковка", "упаковки", "упаковок") + " по " + perPack + " шт." : fmt(buyM2) + " м² плитки",
         rows: rows,
         warn: warn,
         shop: [
@@ -401,6 +493,7 @@
 
       return {
         big: { label: "Нужно обоев", value: fmt(rolls, 0), unit: plural(rolls, "рулон", "рулона", "рулонов") },
+        sub: strips + " " + plural(strips, "полоса", "полосы", "полос") + " по " + fmt(stripLen) + " м · " + perRoll + " из рулона",
         rows: rows,
         warn: warn,
         shop: [
@@ -442,6 +535,7 @@
 
       return {
         big: { label: "Нужно краски", value: fmt(liters, 1), unit: "л" },
+        sub: cans ? cans + " " + plural(cans, "банка", "банки", "банок") + " по " + fmt(can) + " л" : "",
         rows: rows,
         warn: coverage > 12 ? ["Расход больше 12 м²/л встречается редко — проверьте значение на банке."] : [],
         shop: [
@@ -484,6 +578,7 @@
 
       return {
         big: { label: "Нужно ламината", value: fmt(packs, 0), unit: plural(packs, "упаковка", "упаковки", "упаковок") },
+        sub: fmt(buyM2) + " м² · запас " + fmt(reserve * 100, 0) + "%",
         rows: rows,
         warn: reserve < 0.05 ? ["Запас меньше 5% подходит только для идеально прямоугольной комнаты без подрезки."] : [],
         shop: [
@@ -532,7 +627,8 @@
       if (thick < 5) warn.push("Штукатурку тоньше 5 мм не наносят — для выравнивания мелких дефектов нужна шпаклёвка.");
 
       return {
-        big: { label: "Нужно штукатурки", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг" },
+        big: { label: "Нужно штукатурки", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") },
+        sub: "по " + fmt(bag) + " кг · " + fmt(kg, 1) + " кг смеси",
         rows: rows,
         warn: warn,
         shop: [
@@ -573,6 +669,7 @@
 
       return {
         big: { label: "Нужно шпаклёвки", value: fmt(total, 1), unit: "кг" },
+        sub: [startKg ? up(startKg / bs) + " меш. стартовой" : "", finishKg ? up(finishKg / bf) + " меш. финишной" : ""].filter(Boolean).join(" · "),
         rows: rows,
         warn: warn,
         shop: [
@@ -661,6 +758,7 @@
 
       return {
         big: { label: "Нужно гипсокартона", value: fmt(sheets, 0), unit: plural(sheets, "лист", "листа", "листов") },
+        sub: fmt(cladding) + " м² обшивки · " + (memberPieces + guidePieces) + " шт. профиля",
         rows: rows,
         warn: warn,
         shop: [
@@ -708,8 +806,9 @@
 
       return {
         big: packs
-          ? { label: "Нужно утеплителя", value: fmt(packs, 0), unit: plural(packs, "упаковка", "упаковки", "упаковок") + " по " + perPack + " плит" }
+          ? { label: "Нужно утеплителя", value: fmt(packs, 0), unit: plural(packs, "упаковка", "упаковки", "упаковок") }
           : { label: "Нужно утеплителя", value: fmt(boards, 0), unit: plural(boards, "плита", "плиты", "плит") },
+        sub: (packs ? "по " + perPack + " плит · " : "") + fmt(volume, 2) + " м³",
         rows: rows,
         warn: warn,
         shop: [
@@ -734,7 +833,7 @@
         ["Объём раствора", fmt(up1(volume * 100) / 100, 2) + " м³"]
       ];
       var warn = [];
-      var big, shop;
+      var big, sub, shop;
       if (mix === "diy") {
         // Объём сухих компонентов на 1 м³ раствора — 1,3 м³ (песок и цемент уплотняются при затворении).
         var parts = num("ratio", 3);
@@ -745,7 +844,8 @@
         rows.push(["Цемент М500", fmt(cementKg, 0) + " кг (" + bags(cementKg, 50) + ")"]);
         rows.push(["Песок", fmt(sandM3, 2) + " м³ (≈ " + fmt(up1(sandM3 * 1.5), 1) + " т)"]);
         rows.push(["Фиброволокно", "≈ " + fmt(up1(v * 0.9), 1) + " кг"]);
-        big = { label: "Нужно цемента", value: fmt(cementBags, 0), unit: plural(cementBags, "мешок", "мешка", "мешков") + " по 50 кг" };
+        big = { label: "Нужно цемента", value: fmt(cementBags, 0), unit: plural(cementBags, "мешок", "мешка", "мешков") };
+        sub = "цемента по 50 кг · " + fmt(sandM3, 2) + " м³ песка";
         shop = [
           { key: "CEMENT", name: "Цемент М500", q: "цемент м500 50 кг", qty: cementBags + " меш." },
           { key: "PESOK", name: "Песок строительный", q: "песок строительный", qty: fmt(sandM3, 2) + " м³" },
@@ -762,7 +862,8 @@
         rows.push(["Расход смеси", fmt(rate * thick, 1) + " кг/м²"]);
         rows.push(["Смеси с запасом", fmt(kg, 1) + " кг"]);
         if (price) rows.push(["Стоимость смеси", money(bagCount * price)]);
-        big = { label: "Нужно смеси", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг" };
+        big = { label: "Нужно смеси", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") };
+        sub = "по " + fmt(bag) + " кг · " + fmt(kg, 1) + " кг смеси";
         shop = [
           { key: rate < 1.8 ? "NALIVNOY_POL" : "PESKOBETON", name: rate < 1.8 ? "Наливной пол" : "Смесь для стяжки", q: rate < 1.8 ? "наливной пол самовыравнивающийся" : "пескобетон м300 40 кг", qty: bagCount + " меш." }
         ];
@@ -773,7 +874,7 @@
       if (mix === "diy") rows.push(["Армирующая сетка", "≈ " + up(r.floor * 1.1) + " м²"]);
       shop.push({ key: "DEMPFERNAYA_LENTA", name: "Демпферная лента", q: "демпферная лента", qty: up(r.perimeter * 1.05) + " м" });
 
-      return { big: big, rows: rows, warn: warn, shop: shop };
+      return { big: big, sub: sub, rows: rows, warn: warn, shop: shop };
     },
 
     brick: function () {
@@ -814,6 +915,7 @@
 
       return {
         big: { label: "Нужно кирпича", value: fmt(bricks, 0), unit: plural(bricks, "кирпич", "кирпича", "кирпичей") },
+        sub: fmt(mortarM3, 2) + " м³ раствора",
         rows: rows,
         warn: reserve < 0.05 ? ["Запас меньше 5% — кирпич бьётся при перевозке и подрезке."] : [],
         shop: [
@@ -840,6 +942,7 @@
 
     applyVisibility();
     var ok = render(calculators[type]());
+    drawPlan();
     // Цель «расчёт выполнен» — один раз за визит и только после действий пользователя.
     if (ok && touched && !goalSent) {
       goalSent = true;

@@ -1,4 +1,6 @@
-# РемонтКалк — строительные калькуляторы
+# Метраж — строительные калькуляторы
+
+Сайт: **https://metrazh.online/**
 
 Статический сайт с десятью калькуляторами ремонта. Работает без сервера и сборщика: подходит для GitHub Pages, Netlify или любого хостинга.
 
@@ -15,6 +17,8 @@
 | `styazhka.html` | сухая смесь или цемент с песком, фибра, демпферная лента |
 | `kirpich.html` | кирпич, раствор, цемент и песок для кладки |
 
+Оформление: фон-миллиметровка, шрифты Manrope и JetBrains Mono (Google Fonts), тёмная карточка результата, схема комнаты в масштабе (SVG, для плитки и ламината — с раскладкой), на телефоне — прилипающая полоса с итогом внизу экрана. Цвета задаются переменными в начале `assets/style.css`.
+
 На каждой странице калькулятора: хлебные крошки, блок «Как считается», таблица норм расхода, частые вопросы, разметка Schema.org (BreadcrumbList, FAQPage, WebApplication). Размеры комнаты запоминаются и подставляются в другие калькуляторы. Расчётом можно поделиться ссылкой или распечатать его.
 
 ## Структура
@@ -22,12 +26,13 @@
 ```
 index.html, *.html     страницы (собраны скриптом tools/build.py)
 404.html               страница «не найдено» для GitHub Pages
-assets/style.css       стили (светлая и тёмная тема)
+assets/style.css       общие стили; цвета — CSS-переменные в :root
 assets/calc.js         формулы и логика всех калькуляторов
 assets/partners.js     партнёрские ссылки на материалы и магазины
-assets/site.js         Яндекс Метрика, реклама РСЯ, мобильное меню
-tools/build.py         генератор страниц, sitemap.xml и robots.txt
+assets/site.js         Яндекс Метрика и реклама РСЯ
+tools/build.py         генератор страниц, sitemap.xml, robots.txt и CNAME
 sitemap.xml, robots.txt
+CNAME                  домен для GitHub Pages (metrazh.online)
 ```
 
 Шапка, меню, подвал, тексты и SEO-разметка всех страниц описаны в `tools/build.py`. После правок в нём пересоберите сайт:
@@ -79,23 +84,38 @@ grep -rl METRIKA_ID --exclude=README.md . | xargs sed -i 's/METRIKA_ID/98765432/
 
 Место под блок находится между калькулятором и текстом статьи (`<div class="ad-slot" data-rsy>`). На телефоне оно идёт после результата и не перекрывает его. Пока `RSY_BLOCK_ID` не задан, блок скрыт и места не занимает. После замены `assets/site.js` сам подгружает `context.js` Яндекса и выводит блок.
 
-## Свой домен
+## Домен и название сайта
 
-Базовый адрес задаётся в одном месте — константа `SITE_URL` в `tools/build.py`:
+Сайт работает на домене **metrazh.online**. Адрес и название заданы в начале `tools/build.py`:
 
-1. Поменяйте `SITE_URL = "https://conormcgregor645-wq.github.io/ai/"` на свой адрес, например `"https://remontcalc.ru/"` (со слешем на конце).
-2. Запустите `python3 tools/build.py`. Обновятся `canonical`, `og:url`, разметка Schema.org, `sitemap.xml` и `robots.txt`.
-3. Для GitHub Pages укажите домен в Settings → Pages → Custom domain.
-
-Без Python можно заменить адрес поиском и заменой:
-
-```bash
-grep -rl 'conormcgregor645-wq.github.io/ai/' --exclude=README.md . | xargs sed -i 's#https://conormcgregor645-wq.github.io/ai/#https://remontcalc.ru/#g'
+```python
+SITE_URL = "https://metrazh.online/"   # базовый адрес со слешем на конце
+SITE_NAME = "Метраж"                   # шапка, подвал, og:site_name, страница 404
 ```
+
+После изменения запустите `python3 tools/build.py`. Обновятся `canonical`, `og:url`, разметка Schema.org, `sitemap.xml`, `robots.txt` и файл `CNAME`. Для адреса на `*.github.io` файл `CNAME` удаляется.
+
+### Подключение metrazh.online к GitHub Pages
+
+1. В DNS у регистратора домена создайте записи для `metrazh.online`:
+
+   | Тип | Имя | Значение |
+   |---|---|---|
+   | A | `@` | `185.199.108.153` |
+   | A | `@` | `185.199.109.153` |
+   | A | `@` | `185.199.110.153` |
+   | A | `@` | `185.199.111.153` |
+   | CNAME | `www` | `conormcgregor645-wq.github.io` |
+
+   Для IPv6 можно добавить AAAA-записи `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`.
+2. В репозитории: Settings → Pages → Custom domain. Там должно стоять `metrazh.online` (GitHub подхватывает его из файла `CNAME`). Нажмите Save.
+3. Когда GitHub проверит DNS (от нескольких минут до суток), включите **Enforce HTTPS**.
+
+Старый адрес `conormcgregor645-wq.github.io/ai/` после этого автоматически перенаправляется на новый домен.
 
 ## Публикация на GitHub Pages
 
-Settings → Pages → Deploy from a branch → `main`, папка `/ (root)`. Затем добавьте сайт в Яндекс Вебмастер и Google Search Console и отправьте `sitemap.xml`.
+Settings → Pages → Deploy from a branch → `main`, папка `/ (root)`. Затем добавьте https://metrazh.online/ в Яндекс Вебмастер и Google Search Console и отправьте `https://metrazh.online/sitemap.xml`.
 
 ## Проверка формул
 
