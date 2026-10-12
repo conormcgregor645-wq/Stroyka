@@ -1,4 +1,4 @@
-/* Общий код всех страниц: Яндекс Метрика, реклама РСЯ, мобильное меню. */
+/* Общий код всех страниц: Яндекс Метрика и реклама РСЯ. */
 (function () {
   "use strict";
 
@@ -44,26 +44,6 @@
       window.yaContextCb.push(function () {
         window.Ya.Context.AdvManager.render({ blockId: rsyBlockId, renderTo: slot.id });
       });
-    });
-  }
-
-  /* ---------- Мобильное меню ---------- */
-
-  var burger = document.querySelector(".burger");
-  var nav = document.getElementById("site-nav");
-  if (burger && nav) {
-    var setOpen = function (open) {
-      nav.classList.toggle("open", open);
-      burger.setAttribute("aria-expanded", String(open));
-    };
-    burger.addEventListener("click", function () {
-      setOpen(!nav.classList.contains("open"));
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") setOpen(false);
-    });
-    document.addEventListener("click", function (e) {
-      if (!nav.contains(e.target) && !burger.contains(e.target)) setOpen(false);
     });
   }
 })();
