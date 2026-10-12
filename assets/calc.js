@@ -1,4 +1,5 @@
-/* Калькуляторы ремонта: плитка, обои, краска, ламинат. */
+/* Калькуляторы ремонта: плитка, обои, краска, ламинат, штукатурка, шпаклёвка,
+   гипсокартон, утеплитель, стяжка, кирпич. */
 (function () {
   "use strict";
 
@@ -21,6 +22,18 @@
     var el = form.elements[name];
     return el ? el.value : "";
   }
+  // Округление вверх/вниз с допуском: 1,2 / 0,09 × 1,05 в JS даёт 14,000000000000002,
+  // а нужно ровно 14 — без допуска калькулятор добавлял лишнюю штуку.
+  function up(x) {
+    return Math.ceil(x - 1e-7);
+  }
+  function down(x) {
+    return Math.floor(x + 1e-7);
+  }
+  // Вверх до десятых: 8,336 л → 8,4 л (округление вниз оставило бы покупателя без краски).
+  function up1(x) {
+    return up(x * 10) / 10;
+  }
   function fmt(n, digits) {
     return Number(n).toLocaleString("ru-RU", {
       minimumFractionDigits: 0,
@@ -36,6 +49,13 @@
     if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
     return many;
   }
+  function pcs(n) {
+    return fmt(n, 0) + " шт.";
+  }
+  function bags(kg, bag) {
+    var n = up(kg / bag);
+    return n + " " + plural(n, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг";
+  }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
@@ -46,6 +66,9 @@
   }
   function storageSet(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* ignore */ }
+  }
+  function goal(name, params) {
+    if (typeof window.rkGoal === "function") window.rkGoal(name, params);
   }
 
   /* ---------- openings (doors / windows) ---------- */
@@ -79,7 +102,7 @@
   }
 
   function readOpenings() {
-    if (!openingsEl) return [];
+    if (!openingsEl || openingsEl.closest("[hidden]")) return [];
     return Array.prototype.map.call(openingsEl.querySelectorAll(".opening"), function (row) {
       function f(k) {
         var v = parseFloat(String(row.querySelector('[data-op="' + k + '"]').value).replace(",", "."));
@@ -104,21 +127,48 @@
     });
   }
 
+  /* ---------- dependent fields: data-show="field:value1,value2" ---------- */
+
+  function applyVisibility() {
+    Array.prototype.forEach.call(form.querySelectorAll("[data-show]"), function (el) {
+      var parts = el.getAttribute("data-show").split(":");
+      el.hidden = parts[1].split(",").indexOf(val(parts[0])) < 0;
+    });
+  }
+
   /* ---------- rendering ---------- */
 
-  function shopHtml(items) {
+  function partnerUrl(p, q) {
+    var url = p.search.replace("{q}", encodeURIComponent(q));
+    if (!p.wrap || p.wrap === "{url}") return url;
+    return p.wrap.replace("{url}", encodeURIComponent(url));
+  }
+
+  function buyHtml(items) {
     var partners = window.PARTNERS || [];
-    if (!items || !items.length || !partners.length) return "";
-    var html = '<div class="shop"><h3>Где купить</h3>';
+    var affiliate = window.AFFILIATE || {};
+    if (!items || !items.length) return "";
+    var html = '<div class="shop"><h3>Купить материал</h3>';
     items.forEach(function (item) {
-      html += '<div class="shop-item"><div class="name">' + esc(item.name) + '</div><div class="shop-links">';
-      partners.forEach(function (p) {
-        var url = p.search.replace("{q}", encodeURIComponent(item.q));
-        var href = (p.wrap || "{url}").replace("{url}", encodeURIComponent(url));
-        if (p.wrap === "{url}" || !p.wrap) href = url;
-        html += '<a href="' + esc(href) + '" target="_blank" rel="sponsored nofollow noopener">' + esc(p.name) + "</a>";
-      });
-      html += "</div></div>";
+      var aff = affiliate[item.key];
+      var hasAff = aff && aff.indexOf("AFFILIATE_URL_") !== 0;
+      // Пока партнёрская ссылка не вставлена, кнопка ведёт на поиск в первом магазине из списка.
+      var main = hasAff ? aff : partners[0] ? partnerUrl(partners[0], item.q) : "";
+      var alt = hasAff ? partners : partners.slice(1);
+      html += '<div class="buy-item"><div class="buy-head"><span class="name">' + esc(item.name) + "</span>";
+      if (item.qty) html += '<span class="qty">' + esc(item.qty) + "</span>";
+      html += "</div>";
+      if (main) {
+        html += '<a class="buy-btn" href="' + esc(main) + '" target="_blank" rel="sponsored nofollow noopener"' +
+          ' data-aff="' + esc(item.key) + '" data-shop="' + esc(hasAff ? "affiliate" : partners[0].name) + '">Купить →</a>';
+      }
+      if (alt.length) {
+        html += '<div class="buy-alt">Сравнить цены: ' + alt.map(function (p) {
+          return '<a href="' + esc(partnerUrl(p, item.q)) + '" target="_blank" rel="sponsored nofollow noopener"' +
+            ' data-aff="' + esc(item.key) + '" data-shop="' + esc(p.name) + '">' + esc(p.name) + "</a>";
+        }).join(" · ") + "</div>";
+      }
+      html += "</div>";
     });
     html += '<p class="disclosure">Ссылки на магазины могут быть партнёрскими: при покупке сайт получает небольшую комиссию, цена для вас не меняется.</p></div>';
     return html;
@@ -132,7 +182,7 @@
       html = '<div class="big-label">Результат</div><p class="warn">' + esc(r.error) + "</p>";
       resultEl.innerHTML = html;
       lastText = "";
-      return;
+      return false;
     }
     html += '<div class="big-label">' + esc(r.big.label) + "</div>";
     html += '<div class="big">' + esc(r.big.value) + " <small>" + esc(r.big.unit) + "</small></div>";
@@ -150,13 +200,14 @@
       '<button type="button" data-act="link">Ссылка на расчёт</button>' +
       '<button type="button" data-act="print">Печать</button>' +
       "</div>";
-    html += shopHtml(r.shop);
+    html += buyHtml(r.shop);
     resultEl.innerHTML = html;
 
     lastText =
       document.title.split("—")[0].trim() + "\n" +
       r.big.label + ": " + r.big.value + " " + r.big.unit + "\n" +
       r.rows.map(function (row) { return row[0] + ": " + row[1]; }).join("\n");
+    return true;
   }
 
   function flash(btn, text) {
@@ -174,6 +225,11 @@
   }
 
   resultEl.addEventListener("click", function (e) {
+    var link = e.target.closest("a[data-aff]");
+    if (link) {
+      goal("affiliate_click", { calc: type, item: link.getAttribute("data-aff"), shop: link.getAttribute("data-shop") });
+      return;
+    }
     var btn = e.target.closest("button[data-act]");
     if (!btn) return;
     var act = btn.getAttribute("data-act");
@@ -241,13 +297,21 @@
     return { L: L, W: W, H: H, floor: L * W, perimeter: 2 * (L + W) };
   }
 
+  // Площадь по переключателю surface: стены (без проёмов), пол/потолок или всё вместе.
+  function surfaceArea(r, ops) {
+    var walls = Math.max(0, r.perimeter * r.H - openingsArea(ops));
+    var s = val("surface");
+    if (s === "walls") return walls;
+    if (s === "floor" || s === "ceiling") return r.floor;
+    return walls + r.floor;
+  }
+
   var calculators = {
     tile: function () {
       var r = room();
       var surface = val("surface");
       var ops = readOpenings();
-      var wallArea = Math.max(0, r.perimeter * r.H - openingsArea(ops));
-      var area = surface === "floor" ? r.floor : surface === "walls" ? wallArea : r.floor + wallArea;
+      var area = surfaceArea(r, ops);
       var a = num("tile_w"), b = num("tile_h");
       var joint = num("joint"), thick = num("thickness", 8);
       var reserve = num("reserve") / 100;
@@ -257,26 +321,26 @@
       if (!a || !b) return { error: "Введите размер плитки." };
 
       var tileM2 = (a / 100) * (b / 100);
-      var count = Math.ceil((area / tileM2) * (1 + reserve));
-      var buyM2 = count * tileM2;
-      var packs = perPack > 0 ? Math.ceil(count / perPack) : 0;
-      if (packs) { count = packs * perPack; buyM2 = count * tileM2; }
+      var count = up((area / tileM2) * (1 + reserve));
+      var packs = perPack > 0 ? up(count / perPack) : 0;
+      var buyCount = packs ? packs * perPack : count;
+      var buyM2 = buyCount * tileM2;
 
       var maxSide = Math.max(a, b);
       var gluePerM2 = maxSide <= 20 ? 3.5 : maxSide <= 40 ? 4.5 : 6;
-      var glueKg = area * gluePerM2;
+      var glueKg = up(area * gluePerM2);
       var A = a * 10, B = b * 10; // мм
-      var groutKg = joint > 0 ? ((A + B) / (A * B)) * thick * joint * 1.6 * area * 1.1 : 0;
-      var crosses = Math.ceil(count * (joint > 0 ? 3 : 0) / 100) * 100;
+      var groutKg = joint > 0 ? up1(((A + B) / (A * B)) * thick * joint * 1.6 * area * 1.1) : 0;
+      var crosses = joint > 0 ? up(count * 3 / 100) * 100 : 0;
 
       var rows = [
         ["Площадь облицовки", fmt(area) + " м²"],
         ["Площадь плитки к покупке", fmt(buyM2) + " м²"]
       ];
-      if (packs) rows.push(["Упаковок", packs + " упак. по " + perPack + " шт."]);
-      rows.push(["Плиточный клей", "≈ " + fmt(glueKg, 0) + " кг (" + Math.ceil(glueKg / 25) + " меш. по 25 кг)"]);
-      if (groutKg) rows.push(["Затирка", "≈ " + fmt(groutKg, 1) + " кг (" + Math.ceil(groutKg / 2) + " уп. по 2 кг)"]);
-      if (crosses) rows.push(["Крестики / СВП", "≈ " + fmt(crosses, 0) + " шт."]);
+      if (packs) rows.push(["Упаковок", packs + " упак. по " + perPack + " шт. (" + buyCount + " шт.)"]);
+      rows.push(["Плиточный клей", "≈ " + fmt(glueKg, 0) + " кг (" + bags(glueKg, 25) + ")"]);
+      if (groutKg) rows.push(["Затирка", "≈ " + fmt(groutKg, 1) + " кг (" + up(groutKg / 2) + " уп. по 2 кг)"]);
+      if (crosses) rows.push(["Крестики / СВП", "≈ " + pcs(crosses)]);
       if (price) rows.push(["Стоимость плитки", money(buyM2 * price)]);
 
       var warn = [];
@@ -288,9 +352,9 @@
         rows: rows,
         warn: warn,
         shop: [
-          { name: "Плитка " + fmt(a) + "×" + fmt(b) + " см", q: "керамическая плитка " + fmt(a) + "x" + fmt(b) },
-          { name: "Плиточный клей", q: "плиточный клей 25 кг" },
-          { name: "Затирка для швов", q: "затирка для плитки" }
+          { key: "PLITKA", name: "Плитка " + fmt(a) + "×" + fmt(b) + " см", q: "керамическая плитка " + fmt(a) + "x" + fmt(b), qty: packs ? packs + " упак." : pcs(count) },
+          { key: "KLEY_PLITOCHNY", name: "Плиточный клей", q: "плиточный клей 25 кг", qty: up(glueKg / 25) + " меш." },
+          { key: "ZATIRKA", name: "Затирка для швов", q: "затирка для плитки", qty: groutKg ? fmt(groutKg, 1) + " кг" : "" }
         ]
       };
     },
@@ -306,39 +370,43 @@
       if (!rollW || !rollL) return { error: "Введите размеры рулона." };
 
       var wallArea = Math.max(0, r.perimeter * r.H - openingsArea(ops));
+      if (!wallArea) return { error: "Площадь проёмов больше площади стен — проверьте размеры окон и дверей." };
       var effWidth = wallArea / r.H;
-      var strips = Math.ceil(effWidth / rollW - 1e-9);
+      var strips = up(effWidth / rollW);
       var stripLen = r.H + 0.1; // припуск 5 см сверху и снизу
       if (rapport > 0 && match !== "none") {
-        stripLen = Math.ceil(stripLen / rapport - 1e-9) * rapport;
+        stripLen = up(stripLen / rapport) * rapport;
         if (match === "offset") stripLen += rapport / 2;
       }
-      var perRoll = Math.floor(rollL / stripLen + 1e-9);
+      var perRoll = down(rollL / stripLen);
       if (perRoll < 1) {
         return { error: "Полоса длиннее рулона (" + fmt(stripLen) + " м). Выберите рулон длиннее." };
       }
-      var rolls = Math.ceil(strips / perRoll);
+      var rolls = up(strips / perRoll);
       var waste = rolls * rollL * rollW - wallArea;
-      var glueM2 = rolls * rollL * rollW;
+      var glue = up(rolls * rollL * rollW / 25);
 
       var rows = [
         ["Площадь стен без проёмов", fmt(wallArea) + " м²"],
-        ["Полос (полотен)", strips + " шт."],
+        ["Полос (полотен)", pcs(strips)],
         ["Длина полосы с припуском", fmt(stripLen) + " м"],
-        ["Полос из одного рулона", perRoll + " шт."],
-        ["Обойный клей", "≈ " + Math.ceil(glueM2 / 25) + " уп. (на ~25 м² каждая)"],
+        ["Полос из одного рулона", pcs(perRoll)],
+        ["Обойный клей", "≈ " + glue + " уп. (на ~25 м² каждая)"],
         ["Обрезки", "≈ " + fmt(Math.max(0, waste), 1) + " м²"]
       ];
       if (price) rows.push(["Стоимость обоев", money(rolls * price)]);
 
+      var warn = ["Купите на 1 рулон больше из той же партии — номер партии указан на этикетке, оттенок у разных партий отличается."];
+      if (rapport > 0 && match === "none") warn.unshift("Указан раппорт, но выбрано «Без подгонки» — раппорт не учтён. Если рисунок нужно совмещать, выберите тип подгонки.");
+
       return {
         big: { label: "Нужно обоев", value: fmt(rolls, 0), unit: plural(rolls, "рулон", "рулона", "рулонов") },
         rows: rows,
-        warn: ["Купите на 1 рулон больше из той же партии — номер партии указан на этикетке, оттенок у разных партий отличается."],
+        warn: warn,
         shop: [
-          { name: "Обои " + (rollW >= 1 ? "метровые" : "0,53 м"), q: rollW >= 1 ? "обои флизелиновые 1,06" : "обои 0,53" },
-          { name: "Обойный клей", q: "обойный клей" },
-          { name: "Грунтовка", q: "грунтовка глубокого проникновения" }
+          { key: "OBOI", name: "Обои " + (rollW >= 1 ? "метровые" : fmt(rollW) + " м"), q: rollW >= 1 ? "обои флизелиновые 1,06" : "обои 0,53", qty: rolls + " рул." },
+          { key: "KLEY_OBOYNY", name: "Обойный клей", q: "обойный клей", qty: glue + " уп." },
+          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения" }
         ]
       };
     },
@@ -347,8 +415,7 @@
       var r = room();
       var surface = val("surface");
       var ops = readOpenings();
-      var wallArea = Math.max(0, r.perimeter * r.H - openingsArea(ops));
-      var area = surface === "ceiling" ? r.floor : surface === "walls" ? wallArea : r.floor + wallArea;
+      var area = surfaceArea(r, ops);
       var layers = Math.max(1, Math.round(num("layers", 2)));
       var coverage = num("coverage");
       var can = num("can");
@@ -357,9 +424,11 @@
       if (!area) return { error: "Введите размеры помещения." };
       if (!coverage) return { error: "Введите расход краски (м² на литр)." };
 
-      var liters = (area * layers / coverage) * (1 + reserve);
-      var cans = can ? Math.ceil(liters / can - 1e-9) : 0;
-      var primer = area * 0.1;
+      var liters = up1((area * layers / coverage) * (1 + reserve));
+      var cans = can ? up(liters / can) : 0;
+      var primer = up1(area * 0.1);
+      var tape = up(r.perimeter * (surface === "walls" ? 2 : 1) +
+        ops.reduce(function (s, o) { return s + 2 * (o.w + o.h) * o.c; }, 0));
 
       var rows = [
         ["Площадь окраски", fmt(area) + " м²"],
@@ -368,7 +437,7 @@
       ];
       if (cans) rows.push(["Тары по " + fmt(can) + " л", cans + " шт. (" + fmt(cans * can, 1) + " л)"]);
       rows.push(["Грунтовка (1 слой)", "≈ " + fmt(primer, 1) + " л"]);
-      rows.push(["Малярный скотч", "≈ " + fmt(Math.ceil(r.perimeter * (surface === "walls" ? 2 : 1) + ops.reduce(function (s, o) { return s + 2 * (o.w + o.h) * o.c; }, 0)), 0) + " м"]);
+      rows.push(["Малярный скотч", "≈ " + fmt(tape, 0) + " м"]);
       if (price && cans) rows.push(["Стоимость краски", money(cans * price)]);
 
       return {
@@ -376,9 +445,9 @@
         rows: rows,
         warn: coverage > 12 ? ["Расход больше 12 м²/л встречается редко — проверьте значение на банке."] : [],
         shop: [
-          { name: surface === "ceiling" ? "Краска для потолка" : "Краска для стен", q: surface === "ceiling" ? "краска для потолка" : "краска для стен моющаяся" },
-          { name: "Грунтовка", q: "грунтовка для стен под покраску" },
-          { name: "Валики и кюветы", q: "набор малярный валик кювета" }
+          { key: "KRASKA", name: surface === "ceiling" ? "Краска для потолка" : "Краска для стен", q: surface === "ceiling" ? "краска для потолка" : "краска для стен моющаяся", qty: cans ? cans + " × " + fmt(can) + " л" : fmt(liters, 1) + " л" },
+          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка для стен под покраску", qty: fmt(primer, 1) + " л" },
+          { key: "MALYARNY_INSTRUMENT", name: "Валики и кюветы", q: "набор малярный валик кювета" }
         ]
       };
     },
@@ -395,11 +464,11 @@
       if (!r.floor) return { error: "Введите длину и ширину комнаты." };
       if (!pack) return { error: "Введите площадь одной упаковки ламината." };
 
-      var packs = Math.ceil((r.floor * (1 + reserve)) / pack - 1e-9);
+      var packs = up((r.floor * (1 + reserve)) / pack);
       var buyM2 = packs * pack;
-      var underlay = underlayRoll ? Math.ceil((r.floor * 1.05) / underlayRoll - 1e-9) : 0;
+      var underlay = underlayRoll ? up((r.floor * 1.05) / underlayRoll) : 0;
       var plinthM = Math.max(0, r.perimeter - doors * doorW);
-      var plinths = plinthLen ? Math.ceil((plinthM * 1.05) / plinthLen - 1e-9) : 0;
+      var plinths = plinthLen ? up((plinthM * 1.05) / plinthLen) : 0;
 
       var rows = [
         ["Площадь пола", fmt(r.floor) + " м²"],
@@ -418,15 +487,348 @@
         rows: rows,
         warn: reserve < 0.05 ? ["Запас меньше 5% подходит только для идеально прямоугольной комнаты без подрезки."] : [],
         shop: [
-          { name: "Ламинат", q: "ламинат 33 класс" },
-          { name: "Подложка", q: "подложка под ламинат" },
-          { name: "Плинтус", q: "плинтус напольный" }
+          { key: "LAMINAT", name: "Ламинат", q: "ламинат 33 класс", qty: packs + " упак." },
+          { key: "PODLOZHKA", name: "Подложка", q: "подложка под ламинат", qty: underlay ? underlay + " рул." : "" },
+          { key: "PLINTUS", name: "Плинтус", q: "плинтус напольный", qty: plinths ? plinths + " шт." : "" }
+        ]
+      };
+    },
+
+    plaster: function () {
+      var r = room();
+      var ops = readOpenings();
+      var surface = val("surface");
+      var area = surfaceArea(r, ops);
+      var rate = num("mix");
+      var thick = num("thickness");
+      var bag = num("bag");
+      var reserve = num("reserve") / 100;
+      var price = num("price");
+      if (!area) return { error: "Введите размеры помещения." };
+      if (!thick) return { error: "Введите среднюю толщину слоя." };
+
+      var kg = up1(area * thick * rate * (1 + reserve));
+      var bagCount = up(kg / bag);
+      // Маяки ставят через 1,5 м (правило 2 м должно опираться на два маяка).
+      var beacons = 0;
+      if (surface !== "ceiling") {
+        var perWall = function (len) { return len ? up(len / 1.5) + 1 : 0; };
+        beacons += 2 * (perWall(r.L) + perWall(r.W)) * up(r.H / 3);
+      }
+      if (surface !== "walls") beacons += (up(r.W / 1.5) + 1) * up(r.L / 3);
+      var primer = up1(area * 0.15);
+
+      var rows = [
+        ["Площадь оштукатуривания", fmt(area) + " м²"],
+        ["Расход смеси", fmt(rate * thick, 1) + " кг/м² при слое " + fmt(thick) + " мм"],
+        ["Смеси с запасом", fmt(kg, 1) + " кг"],
+        ["Маяки 3 м", "≈ " + pcs(beacons)],
+        ["Грунтовка", "≈ " + fmt(primer, 1) + " л"]
+      ];
+      if (price) rows.push(["Стоимость смеси", money(bagCount * price)]);
+
+      var warn = [];
+      if (thick > 30) warn.push("Слой толще 30 мм наносят в несколько проходов, а свыше 50 мм — по армирующей сетке.");
+      if (thick < 5) warn.push("Штукатурку тоньше 5 мм не наносят — для выравнивания мелких дефектов нужна шпаклёвка.");
+
+      return {
+        big: { label: "Нужно штукатурки", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг" },
+        rows: rows,
+        warn: warn,
+        shop: [
+          { key: "SHTUKATURKA", name: rate < 1.2 ? "Гипсовая штукатурка" : "Цементная штукатурка", q: rate < 1.2 ? "штукатурка гипсовая 30 кг" : "штукатурка цементная 25 кг", qty: bagCount + " меш." },
+          { key: "MAYAKI", name: "Маяки штукатурные", q: "маяк штукатурный 6 мм 3 м", qty: pcs(beacons) },
+          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения 10 л", qty: fmt(primer, 1) + " л" }
+        ]
+      };
+    },
+
+    putty: function () {
+      var r = room();
+      var ops = readOpenings();
+      var area = surfaceArea(r, ops);
+      var ts = num("start_mm"), rs = num("start_rate");
+      var tf = num("finish_mm"), rf = num("finish_rate");
+      var bs = num("start_bag"), bf = num("finish_bag");
+      var reserve = num("reserve") / 100;
+      if (!area) return { error: "Введите размеры помещения." };
+      if (!(ts * rs) && !(tf * rf)) return { error: "Укажите толщину и расход хотя бы одного слоя." };
+      if ((ts && !bs) || (tf && !bf)) return { error: "Укажите вес мешка." };
+
+      var startKg = ts ? up1(area * ts * rs * (1 + reserve)) : 0;
+      var finishKg = tf ? up1(area * tf * rf * (1 + reserve)) : 0;
+      var total = Math.round((startKg + finishKg) * 10) / 10;
+      var primer = up1(area * 0.1 * ((ts ? 1 : 0) + (tf ? 1 : 0)));
+      var sandpaper = up(area / 10);
+
+      var rows = [["Площадь шпаклевания", fmt(area) + " м²"]];
+      if (startKg) rows.push(["Стартовая шпаклёвка", fmt(startKg, 1) + " кг (" + bags(startKg, bs) + ")"]);
+      if (finishKg) rows.push(["Финишная шпаклёвка", fmt(finishKg, 1) + " кг (" + bags(finishKg, bf) + ")"]);
+      rows.push(["Грунтовка (перед каждым слоем)", "≈ " + fmt(primer, 1) + " л"]);
+      rows.push(["Абразивная сетка", "≈ " + sandpaper + " лист."]);
+
+      var warn = [];
+      if (ts > 5) warn.push("Стартовую шпаклёвку наносят слоем до 5 мм за проход. При больших перепадах дешевле сначала выровнять стены штукатуркой.");
+      if (tf > 2) warn.push("Финишный слой обычно 0,5–1,5 мм. Проверьте толщину.");
+
+      return {
+        big: { label: "Нужно шпаклёвки", value: fmt(total, 1), unit: "кг" },
+        rows: rows,
+        warn: warn,
+        shop: [
+          { key: "SHPAKLEVKA_START", name: "Стартовая шпаклёвка", q: "шпаклевка стартовая гипсовая", qty: startKg ? up(startKg / bs) + " меш." : "" },
+          { key: "SHPAKLEVKA_FINISH", name: "Финишная шпаклёвка", q: "шпаклевка финишная полимерная", qty: finishKg ? up(finishKg / bf) + " меш." : "" },
+          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения", qty: fmt(primer, 1) + " л" }
+        ]
+      };
+    },
+
+    drywall: function () {
+      var r = room();
+      var ops = readOpenings();
+      var mode = val("mode");
+      var sheet = num("sheet");
+      var layers = Math.max(1, Math.round(num("layers", 1)));
+      var step = num("step");
+      var plen = num("profile_len");
+      var reserve = num("reserve") / 100;
+      var price = num("price");
+      var partL = num("part_l");
+      if (!sheet || !step || !plen) return { error: "Заполните параметры листа и каркаса." };
+
+      // Подвесы и крепления к основанию — с шагом не больше 1 м.
+      function hangers(len) { return Math.max(1, up(len / 1) - 1); }
+      var area, sides = 1, members, memberPieces, guideM, hang = 0, mainName, guideName;
+      if (mode === "ceiling") {
+        if (!r.floor) return { error: "Введите длину и ширину комнаты." };
+        area = r.floor;
+        members = Math.max(1, up(r.W / step) - 1);
+        memberPieces = members * up(r.L / plen);
+        guideM = r.perimeter;
+        hang = members * hangers(r.L);
+        mainName = "Профиль ПП 60×27";
+        guideName = "Профиль ПН 28×27";
+      } else if (mode === "partition") {
+        if (!partL || !r.H) return { error: "Введите длину перегородки и высоту помещения." };
+        area = Math.max(0, partL * r.H - openingsArea(ops));
+        sides = 2;
+        members = up(partL / step) + 1;
+        memberPieces = members * up(r.H / plen);
+        guideM = 2 * partL;
+        mainName = "Профиль ПС 50×50";
+        guideName = "Профиль ПН 50×40";
+      } else {
+        if (!r.perimeter || !r.H) return { error: "Введите размеры помещения." };
+        area = Math.max(0, r.perimeter * r.H - openingsArea(ops));
+        members = 2 * (up(r.L / step) + 1) + 2 * (up(r.W / step) + 1);
+        memberPieces = members * up(r.H / plen);
+        guideM = 2 * r.perimeter;
+        hang = members * hangers(r.H);
+        mainName = "Профиль ПП 60×27";
+        guideName = "Профиль ПН 28×27";
+      }
+      if (!area) return { error: "Площадь проёмов больше площади обшивки — проверьте размеры." };
+
+      var cladding = area * sides;
+      var sheets = up(cladding * layers * (1 + reserve) / sheet);
+      var guidePieces = up(guideM / plen);
+      var screwRate = mode === "ceiling" ? 25 : 20;
+      var screws = up(cladding * layers * screwRate);
+      var bugs = hang * 2 + members * 4;
+      var dowels = up(guideM / 0.5) + hang * 2;
+      var tape = up(cladding * 1.2);
+      var filler = up1(cladding * 0.35);
+
+      var rows = [
+        ["Площадь обшивки", fmt(cladding) + " м²" + (sides === 2 ? " (2 стороны)" : "")],
+        [mainName, members + " " + (mode === "ceiling" ? plural(members, "линия", "линии", "линий") : plural(members, "стойка", "стойки", "стоек")) +
+          " → " + pcs(memberPieces) + " по " + fmt(plen) + " м"],
+        [guideName, fmt(guideM, 1) + " м → " + pcs(guidePieces)]
+      ];
+      if (hang) rows.push(["Прямые подвесы", pcs(hang)]);
+      rows.push(["Саморезы по ГКЛ 3,5×25", "≈ " + pcs(screws)]);
+      rows.push(["Саморезы-клопы 3,5×9,5", "≈ " + pcs(bugs)]);
+      rows.push(["Дюбель-гвозди 6×40", "≈ " + pcs(dowels)]);
+      rows.push(["Серпянка", "≈ " + tape + " м"]);
+      rows.push(["Шпаклёвка для швов", "≈ " + fmt(filler, 1) + " кг"]);
+      if (price) rows.push(["Стоимость листов", money(sheets * price)]);
+
+      var warn = [];
+      if (layers === 2) warn.push("Для второго слоя нужны саморезы длиной 35 мм.");
+      if (mode === "partition" && ops.some(function (o) { return o.kind === "d"; })) {
+        warn.push("Дверной проём в перегородке усиливают: добавьте по 2 стойки ПС на каждую дверь, лучше с деревянным бруском внутри.");
+      }
+
+      return {
+        big: { label: "Нужно гипсокартона", value: fmt(sheets, 0), unit: plural(sheets, "лист", "листа", "листов") },
+        rows: rows,
+        warn: warn,
+        shop: [
+          { key: "GIPSOKARTON", name: "Гипсокартон", q: "гипсокартон 12,5 мм", qty: sheets + " л." },
+          { key: "PROFIL_GKL", name: "Профиль для ГКЛ", q: mode === "partition" ? "профиль ПС 50х50" : "профиль ПП 60х27", qty: memberPieces + guidePieces + " шт." },
+          { key: "SAMOREZY", name: "Саморезы и крепёж", q: "саморезы по гипсокартону 3,5х25", qty: "" }
+        ]
+      };
+    },
+
+    insulation: function () {
+      var r = room();
+      var ops = readOpenings();
+      var surface = val("surface");
+      var area = surfaceArea(r, ops);
+      var total = num("total_mm");
+      var bl = num("board_l"), bw = num("board_w"), bt = num("board_t");
+      var perPack = Math.round(num("per_pack"));
+      var reserve = num("reserve") / 100;
+      var price = num("price");
+      if (!area) return { error: "Введите размеры помещения." };
+      if (!total || !bl || !bw || !bt) return { error: "Заполните толщину утепления и размеры плиты." };
+
+      var layers = up(total / bt);
+      var boardM2 = (bl / 1000) * (bw / 1000);
+      var boards = up(area * layers * (1 + reserve) / boardM2);
+      var packs = perPack ? up(boards / perPack) : 0;
+      var volume = area * layers * bt / 1000;
+      var film = up(area * 1.1);
+      var dowels = surface === "walls" ? up(area * 6) : 0;
+
+      var rows = [
+        ["Площадь утепления", fmt(area) + " м²"],
+        ["Слоёв по " + fmt(bt) + " мм", String(layers)],
+        ["Плит " + fmt(bl) + "×" + fmt(bw) + " мм", pcs(boards)],
+        ["Объём утеплителя", fmt(volume, 2) + " м³"],
+        ["Пароизоляция (нахлёст 10 см)", "≈ " + film + " м²"]
+      ];
+      if (dowels) rows.push(["Дюбели-грибки", "≈ " + pcs(dowels)]);
+      if (price && packs) rows.push(["Стоимость утеплителя", money(packs * price)]);
+
+      var warn = [];
+      if (layers * bt > total + 1e-7) warn.push("Толщина утепления не делится на толщину плиты — получится " + fmt(layers * bt) + " мм вместо " + fmt(total) + " мм.");
+      if (layers > 1) warn.push("Второй слой кладут со смещением швов, чтобы не было мостиков холода.");
+
+      return {
+        big: packs
+          ? { label: "Нужно утеплителя", value: fmt(packs, 0), unit: plural(packs, "упаковка", "упаковки", "упаковок") + " по " + perPack + " плит" }
+          : { label: "Нужно утеплителя", value: fmt(boards, 0), unit: plural(boards, "плита", "плиты", "плит") },
+        rows: rows,
+        warn: warn,
+        shop: [
+          { key: "UTEPLITEL", name: "Утеплитель " + fmt(bt) + " мм", q: "утеплитель минеральная вата " + fmt(bt) + " мм", qty: packs ? packs + " упак." : pcs(boards) },
+          { key: "PAROIZOLYACIYA", name: "Пароизоляционная плёнка", q: "пароизоляция", qty: film + " м²" },
+          { key: "DYUBELI_GRIBKI", name: "Дюбели-грибки", q: "дюбель для теплоизоляции", qty: dowels ? pcs(dowels) : "" }
+        ]
+      };
+    },
+
+    screed: function () {
+      var r = room();
+      var thick = num("thickness");
+      var mix = val("mix");
+      var reserve = num("reserve") / 100;
+      if (!r.floor) return { error: "Введите длину и ширину комнаты." };
+      if (!thick) return { error: "Введите среднюю толщину стяжки." };
+
+      var volume = r.floor * thick / 1000;
+      var rows = [
+        ["Площадь пола", fmt(r.floor) + " м²"],
+        ["Объём раствора", fmt(up1(volume * 100) / 100, 2) + " м³"]
+      ];
+      var warn = [];
+      var big, shop;
+      if (mix === "diy") {
+        // Объём сухих компонентов на 1 м³ раствора — 1,3 м³ (песок и цемент уплотняются при затворении).
+        var parts = num("ratio", 3);
+        var v = volume * (1 + reserve);
+        var cementKg = up(v * 1.3 / (1 + parts) * 1300);
+        var sandM3 = up(v * 1.3 * parts / (1 + parts) * 100) / 100;
+        var cementBags = up(cementKg / 50);
+        rows.push(["Цемент М500", fmt(cementKg, 0) + " кг (" + bags(cementKg, 50) + ")"]);
+        rows.push(["Песок", fmt(sandM3, 2) + " м³ (≈ " + fmt(up1(sandM3 * 1.5), 1) + " т)"]);
+        rows.push(["Фиброволокно", "≈ " + fmt(up1(v * 0.9), 1) + " кг"]);
+        big = { label: "Нужно цемента", value: fmt(cementBags, 0), unit: plural(cementBags, "мешок", "мешка", "мешков") + " по 50 кг" };
+        shop = [
+          { key: "CEMENT", name: "Цемент М500", q: "цемент м500 50 кг", qty: cementBags + " меш." },
+          { key: "PESOK", name: "Песок строительный", q: "песок строительный", qty: fmt(sandM3, 2) + " м³" },
+          { key: "FIBRA", name: "Фиброволокно", q: "фиброволокно полипропиленовое" }
+        ];
+        if (thick < 30) warn.push("Цементно-песчаную стяжку делают толщиной от 30 мм, на разделительном слое или утеплителе — от 40 мм.");
+      } else {
+        var rate = num("rate");
+        var bag = num("bag");
+        if (!rate || !bag) return { error: "Выберите смесь и вес мешка." };
+        var kg = up1(r.floor * thick * rate * (1 + reserve));
+        var bagCount = up(kg / bag);
+        var price = num("price");
+        rows.push(["Расход смеси", fmt(rate * thick, 1) + " кг/м²"]);
+        rows.push(["Смеси с запасом", fmt(kg, 1) + " кг"]);
+        if (price) rows.push(["Стоимость смеси", money(bagCount * price)]);
+        big = { label: "Нужно смеси", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг" };
+        shop = [
+          { key: rate < 1.8 ? "NALIVNOY_POL" : "PESKOBETON", name: rate < 1.8 ? "Наливной пол" : "Смесь для стяжки", q: rate < 1.8 ? "наливной пол самовыравнивающийся" : "пескобетон м300 40 кг", qty: bagCount + " меш." }
+        ];
+        if (rate >= 1.8 && thick < 30) warn.push("Цементно-песчаную стяжку делают толщиной от 30 мм. Для тонкого выравнивания выберите наливной пол.");
+        if (rate < 1.8 && thick > 100) warn.push("Наливной пол заливают обычно слоем до 100 мм — проверьте инструкцию смеси.");
+      }
+      rows.push(["Демпферная лента", "≈ " + fmt(up(r.perimeter * 1.05), 0) + " м"]);
+      if (mix === "diy") rows.push(["Армирующая сетка", "≈ " + up(r.floor * 1.1) + " м²"]);
+      shop.push({ key: "DEMPFERNAYA_LENTA", name: "Демпферная лента", q: "демпферная лента", qty: up(r.perimeter * 1.05) + " м" });
+
+      return { big: big, rows: rows, warn: warn, shop: shop };
+    },
+
+    brick: function () {
+      var r = room();
+      var ops = readOpenings();
+      var mode = val("mode");
+      var h = num("brick") / 1000;
+      var k = num("wall"); // толщина стены в кирпичах: 0,5; 1; 1,5; 2
+      var j = num("joint") / 1000;
+      var reserve = num("reserve") / 100;
+      var price = num("price");
+      var len = mode === "one" ? r.L : r.perimeter;
+      if (!len || !r.H) return { error: "Введите длину стен и высоту." };
+      if (!h || !k) return { error: "Выберите кирпич и толщину стены." };
+
+      var area = Math.max(0, len * r.H - openingsArea(ops));
+      if (!area) return { error: "Площадь проёмов больше площади стен — проверьте размеры." };
+      var DEPTH = { "0.5": 0.12, "1": 0.25, "1.5": 0.38, "2": 0.51 };
+      var depth = DEPTH[String(k)] || k * 0.25;
+      // На 1 м² лицевой поверхности в полкирпича: 1 / ((0,25 + шов) × (высота + шов)).
+      var perM2 = 2 * k / ((0.25 + j) * (h + j));
+      var net = area * perM2;
+      var bricks = up(net * (1 + reserve));
+      var mortar = Math.max(0, area * depth - net * 0.25 * 0.12 * h) * (1 + reserve);
+      var mortarM3 = up(mortar * 100) / 100;
+      var cementKg = up(mortar * 1.3 / 5 * 1300);
+      var sandM3 = up(mortar * 1.3 * 4 / 5 * 100) / 100;
+
+      var rows = [
+        ["Площадь кладки без проёмов", fmt(area) + " м²"],
+        ["Кирпичей на 1 м²", fmt(perM2, 1) + " шт."],
+        ["Объём кладки", fmt(area * depth, 2) + " м³"],
+        ["Раствор", "≈ " + fmt(mortarM3, 2) + " м³"],
+        ["Цемент М500 (раствор 1:4)", "≈ " + fmt(cementKg, 0) + " кг (" + bags(cementKg, 50) + ")"],
+        ["Песок", "≈ " + fmt(sandM3, 2) + " м³"]
+      ];
+      if (price) rows.push(["Стоимость кирпича", money(bricks * price)]);
+
+      return {
+        big: { label: "Нужно кирпича", value: fmt(bricks, 0), unit: plural(bricks, "кирпич", "кирпича", "кирпичей") },
+        rows: rows,
+        warn: reserve < 0.05 ? ["Запас меньше 5% — кирпич бьётся при перевозке и подрезке."] : [],
+        shop: [
+          { key: "KIRPICH", name: "Кирпич", q: h > 0.1 ? "кирпич двойной" : h > 0.07 ? "кирпич полуторный" : "кирпич одинарный", qty: pcs(bricks) },
+          { key: "CEMENT", name: "Цемент М500", q: "цемент м500 50 кг", qty: up(cementKg / 50) + " меш." },
+          { key: "KLADOCHNAYA_SETKA", name: "Кладочная сетка", q: "сетка кладочная" }
         ]
       };
     }
   };
 
   /* ---------- wiring ---------- */
+
+  var touched = false;
+  var goalSent = false;
 
   function update() {
     var room = {};
@@ -436,16 +838,18 @@
     var saved = storageGet(ROOM_KEY) || {};
     storageSet(ROOM_KEY, Object.assign(saved, room));
 
-    var surface = val("surface");
-    var openingsBlock = document.getElementById("openings-block");
-    if (openingsBlock) openingsBlock.hidden = surface === "floor" || surface === "ceiling";
-
-    render(calculators[type]());
+    applyVisibility();
+    var ok = render(calculators[type]());
+    // Цель «расчёт выполнен» — один раз за визит и только после действий пользователя.
+    if (ok && touched && !goalSent) {
+      goalSent = true;
+      goal("calc_done", { calc: type });
+    }
   }
 
   restore();
-  form.addEventListener("input", update);
-  form.addEventListener("change", update);
+  form.addEventListener("input", function () { touched = true; update(); });
+  form.addEventListener("change", function () { touched = true; update(); });
   form.addEventListener("submit", function (e) { e.preventDefault(); update(); });
   update();
 })();

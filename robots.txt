@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /tools/
 
 Sitemap: https://conormcgregor645-wq.github.io/ai/sitemap.xml
