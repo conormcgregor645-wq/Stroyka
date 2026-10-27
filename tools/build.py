@@ -24,7 +24,7 @@ SITE_NAME = "Метраж"
 # Дата для <lastmod> в sitemap.xml.
 LASTMOD = "2026-10-12"
 # Номер счётчика Метрики для <noscript> — тот же, что в assets/site.js.
-metrika_counter = "METRIKA_ID"
+metrika_counter = "113822395"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E"

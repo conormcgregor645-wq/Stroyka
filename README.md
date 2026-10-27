@@ -47,7 +47,7 @@ python3 tools/build.py
 
 | Заглушка | Где заменить | На что |
 |---|---|---|
-| `METRIKA_ID` | `assets/site.js` (переменная `metrikaId`) и `tools/build.py` (`metrika_counter`, для `<noscript>`) — или поиском-заменой по всем файлам | номер счётчика Яндекс Метрики, например `98765432` |
+| `METRIKA_ID` | ✅ заменён на `113822395` в `assets/site.js` (`metrikaId`), `tools/build.py` (`metrika_counter`, для `<noscript>`) и на всех страницах | номер счётчика Яндекс Метрики |
 | `RSY_BLOCK_ID` | `assets/site.js` (переменная `rsyBlockId`) | ID блока РСЯ, например `R-A-1234567-1` |
 | `AFFILIATE_URL_*` (29 шт.) | `assets/partners.js`, объект `AFFILIATE` | партнёрские ссылки на товар или категорию |
 | `YANDEX_VERIFICATION_CODE` | `tools/build.py`, шаблон `<head>`: раскомментировать строку, затем пересборка | код из Яндекс Вебмастера |
@@ -61,7 +61,7 @@ grep -rl METRIKA_ID --exclude=README.md . | xargs sed -i 's/METRIKA_ID/98765432/
 
 ### Яндекс Метрика
 
-Код счётчика подключается из `assets/site.js` на всех страницах. Пока там стоит заглушка, счётчик не загружается.
+Счётчик **113822395** подключается из `assets/site.js` на всех страницах. Чтобы сменить его, поменяйте номер в `assets/site.js` и `tools/build.py` и пересоберите страницы.
 
 Сайт отправляет две цели (`reachGoal`). Создайте их в Метрике: «Цели → Добавить цель → JavaScript-событие».
 
