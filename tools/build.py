@@ -27,8 +27,9 @@ LASTMOD = "2026-10-12"
 metrika_counter = "113822395"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E"
-           "%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%90%3C/text%3E%3C/svg%3E")
+# Иконки сайта: assets/favicon.svg (логотип-рулетка) и assets/apple-touch-icon.png (180×180).
+ICONS_HEAD = ('<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
+              '<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">')
 
 # Иконки материалов (линейные SVG из макета).
 _SVG = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E2226" stroke-width="1.6"{extra} aria-hidden="true">{body}</svg>'
@@ -230,7 +231,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
 <!-- <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE"> -->
-<link rel="icon" href="{FAVICON}">
+{ICONS_HEAD}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap">
