@@ -1,81 +1,40 @@
 /*
- * Монетизация: партнёрские ссылки на материалы и магазины.
+ * Партнёрские ссылки: блок «Купить …» под каждым калькулятором.
  *
- * 1. AFFILIATE — главная кнопка «Купить →» в блоке «Купить материал».
- *    Замените заглушку AFFILIATE_URL_… на свою партнёрскую ссылку на товар
- *    или категорию (Admitad, Яндекс Маркет для партнёров и т.п.).
- *    Пока заглушка не заменена, кнопка ведёт на поиск товара в первом
- *    магазине из списка PARTNERS — битых ссылок на сайте не будет.
- *
- * 2. PARTNERS — ссылки «Сравнить цены» под кнопкой.
- *    search — поиск в магазине, {q} заменяется на запрос.
- *    wrap   — обёртка партнёрской сети (deeplink), {url} заменяется на
- *             закодированную ссылку на магазин; "{url}" — без партнёрки.
- *    Пример для Admitad:  wrap: "https://ad.admitad.com/g/ВАШ_КОД/?ulp={url}"
- *
- * Все ссылки выводятся с rel="sponsored nofollow" и target="_blank".
+ * links — партнёрские ссылки Максидома (через uuwgc.com). Все ссылки на
+ *         покупку должны вести через партнёрскую сеть, не напрямую на maxidom.ru.
+ * pages — что показывать на каждом калькуляторе: main — большая кнопка,
+ *         extra — маленькие кнопки под ней [ключ ссылки, подпись].
+ * advertiser, inn — для маркировки «Реклама». erid берётся из параметра
+ *         erid каждой ссылки автоматически.
  */
-window.AFFILIATE = {
-  // Плитка
-  PLITKA: "AFFILIATE_URL_PLITKA",
-  KLEY_PLITOCHNY: "AFFILIATE_URL_KLEY_PLITOCHNY",
-  ZATIRKA: "AFFILIATE_URL_ZATIRKA",
-  // Обои
-  OBOI: "AFFILIATE_URL_OBOI",
-  KLEY_OBOYNY: "AFFILIATE_URL_KLEY_OBOYNY",
-  // Краска и общее
-  KRASKA: "AFFILIATE_URL_KRASKA",
-  GRUNTOVKA: "AFFILIATE_URL_GRUNTOVKA",
-  MALYARNY_INSTRUMENT: "AFFILIATE_URL_MALYARNY_INSTRUMENT",
-  // Ламинат
-  LAMINAT: "AFFILIATE_URL_LAMINAT",
-  PODLOZHKA: "AFFILIATE_URL_PODLOZHKA",
-  PLINTUS: "AFFILIATE_URL_PLINTUS",
-  // Штукатурка и шпаклёвка
-  SHTUKATURKA: "AFFILIATE_URL_SHTUKATURKA",
-  MAYAKI: "AFFILIATE_URL_MAYAKI",
-  SHPAKLEVKA_START: "AFFILIATE_URL_SHPAKLEVKA_START",
-  SHPAKLEVKA_FINISH: "AFFILIATE_URL_SHPAKLEVKA_FINISH",
-  // Гипсокартон
-  GIPSOKARTON: "AFFILIATE_URL_GIPSOKARTON",
-  PROFIL_GKL: "AFFILIATE_URL_PROFIL_GKL",
-  SAMOREZY: "AFFILIATE_URL_SAMOREZY",
-  // Утеплитель
-  UTEPLITEL: "AFFILIATE_URL_UTEPLITEL",
-  PAROIZOLYACIYA: "AFFILIATE_URL_PAROIZOLYACIYA",
-  DYUBELI_GRIBKI: "AFFILIATE_URL_DYUBELI_GRIBKI",
-  // Стяжка
-  PESKOBETON: "AFFILIATE_URL_PESKOBETON",
-  NALIVNOY_POL: "AFFILIATE_URL_NALIVNOY_POL",
-  CEMENT: "AFFILIATE_URL_CEMENT",
-  PESOK: "AFFILIATE_URL_PESOK",
-  FIBRA: "AFFILIATE_URL_FIBRA",
-  DEMPFERNAYA_LENTA: "AFFILIATE_URL_DEMPFERNAYA_LENTA",
-  // Кирпич
-  KIRPICH: "AFFILIATE_URL_KIRPICH",
-  KLADOCHNAYA_SETKA: "AFFILIATE_URL_KLADOCHNAYA_SETKA"
-};
-
-// Перед запуском проверьте, что поисковые URL магазинов актуальны.
-window.PARTNERS = [
-  {
-    name: "Лемана ПРО",
-    search: "https://lemanapro.ru/search/?q={q}",
-    wrap: "{url}"
+window.SHOP = {
+  id: "maxidom",
+  button: "Купить в Максидоме",
+  advertiser: "ООО МАКСИДОМ",
+  inn: "7804064663",
+  links: {
+    PLITKA: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fplitka%2F",
+    KLEY_PLITOCHNY: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fklei-dlya-plitki-keramicheskoy-i-keramogranita%2F",
+    ZATIRKA: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fzatirki-dlya-plitki-keramicheskoy-i-keramogranita%2F",
+    OBOI: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Foboi%2F",
+    KRASKA: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fkraski-dlya-sten-i-potolkov%2F",
+    GRUNTOVKA: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fgruntovka%2F",
+    LAMINAT: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Flaminat%2F",
+    GIPSOKARTON: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fgipsokarton%2F",
+    // Штукатурка, шпаклёвка, утеплитель, стяжка, кирпич — раздел «Строительные материалы».
+    OSTALNOE: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fstroitelnye-materialy%2F"
   },
-  {
-    name: "Петрович",
-    search: "https://petrovich.ru/search/?q={q}",
-    wrap: "{url}"
-  },
-  {
-    name: "ВсеИнструменты",
-    search: "https://www.vseinstrumenti.ru/search/?what={q}",
-    wrap: "{url}"
-  },
-  {
-    name: "Яндекс Маркет",
-    search: "https://market.yandex.ru/search?text={q}",
-    wrap: "{url}"
+  pages: {
+    tile: { main: "PLITKA", extra: [["KLEY_PLITOCHNY", "Клей для плитки"], ["ZATIRKA", "Затирка"]] },
+    wallpaper: { main: "OBOI" },
+    paint: { main: "KRASKA", extra: [["GRUNTOVKA", "Грунтовка"]] },
+    laminate: { main: "LAMINAT" },
+    drywall: { main: "GIPSOKARTON" },
+    plaster: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
+    putty: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
+    insulation: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
+    screed: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
+    brick: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] }
   }
-];
+};

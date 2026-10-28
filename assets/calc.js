@@ -138,52 +138,49 @@
 
   /* ---------- rendering ---------- */
 
-  function partnerUrl(p, q) {
-    var url = p.search.replace("{q}", encodeURIComponent(q));
-    if (!p.wrap || p.wrap === "{url}") return url;
-    return p.wrap.replace("{url}", encodeURIComponent(url));
-  }
-
   var buyEl = document.getElementById("buy");
   var buyKey = "";
 
-  // Блок «Купить …» под калькулятором: кнопка на партнёрскую ссылку и «Сравнить цены» в магазинах.
-  function renderBuy(items) {
+  function eridOf(url) {
+    var m = /[?&]erid=([^&#]+)/.exec(url);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  // Блок «Купить …» под калькулятором: кнопка в магазин, маленькие кнопки и маркировка рекламы.
+  function renderBuy(r) {
     if (!buyEl) return;
-    var partners = window.PARTNERS || [];
-    var affiliate = window.AFFILIATE || {};
+    var shop = window.SHOP || {};
+    var cfg = (shop.pages || {})[type];
+    var links = shop.links || {};
     var html = "";
-    if (items && items.length) {
+    if (r && cfg && links[cfg.main]) {
+      var used = [cfg.main];
       html = "<h2>" + esc(buyEl.getAttribute("data-title") || "Купить материал") + "</h2>" +
-        '<p class="buy-lead">Посмотрите цены в строительном магазине с доставкой.</p>';
-      items.forEach(function (item) {
-        var aff = affiliate[item.key];
-        var hasAff = aff && aff.indexOf("AFFILIATE_URL_") !== 0;
-        // Пока партнёрская ссылка не вставлена, кнопка ведёт на поиск в первом магазине из списка.
-        var main = hasAff ? aff : partners[0] ? partnerUrl(partners[0], item.q) : "";
-        var alt = hasAff ? partners : partners.slice(1);
-        html += '<div class="buy-item"><div class="buy-info"><span class="buy-name">' + esc(item.name) + "</span>";
-        if (item.qty) html += '<span class="buy-qty">' + esc(item.qty) + "</span>";
-        html += "</div>";
-        if (main) {
-          html += '<a class="buy-btn" href="' + esc(main) + '" target="_blank" rel="sponsored nofollow noopener"' +
-            ' data-aff="' + esc(item.key) + '" data-shop="' + esc(hasAff ? "affiliate" : partners[0].name) + '">Перейти в магазин</a>';
-        }
-        if (alt.length) {
-          html += '<div class="buy-alt">Сравнить цены: ' + alt.map(function (p) {
-            return '<a href="' + esc(partnerUrl(p, item.q)) + '" target="_blank" rel="sponsored nofollow noopener"' +
-              ' data-aff="' + esc(item.key) + '" data-shop="' + esc(p.name) + '">' + esc(p.name) + "</a>";
-          }).join(" · ") + "</div>";
-        }
-        html += "</div>";
-      });
-      html += '<p class="disclosure">Ссылки на магазины могут быть партнёрскими: при покупке сайт получает небольшую комиссию, цена для вас не меняется.</p>';
+        '<p class="buy-lead">Нужно: ' + esc((r.big.value + " " + r.big.unit + (r.sub ? " · " + r.sub : "")).replace(/\.$/, "")) +
+        ". Цены и доставка — на сайте магазина.</p>";
+      html += '<div class="buy-actions">' + buyLink(links[cfg.main], cfg.main, shop.button, "buy-btn");
+      var extra = (cfg.extra || []).filter(function (x) { return links[x[0]]; });
+      if (extra.length) {
+        html += '<div class="buy-extra">' + extra.map(function (x) {
+          used.push(x[0]);
+          return buyLink(links[x[0]], x[0], x[1], "buy-small");
+        }).join("") + "</div>";
+      }
+      html += "</div>";
+      // Маркировка рекламы: erid берём из каждой использованной ссылки.
+      var erids = used.map(function (k) { return eridOf(links[k]); }).filter(function (e, i, all) { return e && all.indexOf(e) === i; });
+      html += '<p class="ad-mark">Реклама. ' + esc(shop.advertiser) + ", ИНН " + esc(shop.inn) + ", erid: " + esc(erids.join(", ")) + "</p>";
     }
     // Перерисовываем только при изменении, чтобы не сбивать фокус и наведение.
     if (html !== buyKey) {
       buyKey = html;
       buyEl.innerHTML = html;
     }
+  }
+
+  function buyLink(url, key, text, cls) {
+    return '<a class="' + cls + '" href="' + esc(url) + '" target="_blank" rel="sponsored nofollow noopener"' +
+      ' data-aff="' + esc(key) + '" data-shop="' + esc((window.SHOP || {}).id || "") + '">' + esc(text) + "</a>";
   }
 
   var barBig = document.getElementById("mbar-big");
@@ -220,7 +217,7 @@
       '<button type="button" class="print" data-act="print">Распечатать</button>' +
       "</div>";
     resultEl.innerHTML = html;
-    renderBuy(r.shop);
+    renderBuy(r);
     if (barBig) barBig.textContent = bigText;
     if (barSub) barSub.textContent = r.sub || "";
 
@@ -442,12 +439,7 @@
         big: { label: "Нужно плитки", value: fmt(count, 0), unit: plural(count, "плитка", "плитки", "плиток") },
         sub: packs ? packs + " " + plural(packs, "упаковка", "упаковки", "упаковок") + " по " + perPack + " шт." : fmt(buyM2) + " м² плитки",
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "PLITKA", name: "Плитка " + fmt(a) + "×" + fmt(b) + " см", q: "керамическая плитка " + fmt(a) + "x" + fmt(b), qty: packs ? packs + " упак." : pcs(count) },
-          { key: "KLEY_PLITOCHNY", name: "Плиточный клей", q: "плиточный клей 25 кг", qty: up(glueKg / 25) + " меш." },
-          { key: "ZATIRKA", name: "Затирка для швов", q: "затирка для плитки", qty: groutKg ? fmt(groutKg, 1) + " кг" : "" }
-        ]
+        warn: warn
       };
     },
 
@@ -495,12 +487,7 @@
         big: { label: "Нужно обоев", value: fmt(rolls, 0), unit: plural(rolls, "рулон", "рулона", "рулонов") },
         sub: strips + " " + plural(strips, "полоса", "полосы", "полос") + " по " + fmt(stripLen) + " м · " + perRoll + " из рулона",
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "OBOI", name: "Обои " + (rollW >= 1 ? "метровые" : fmt(rollW) + " м"), q: rollW >= 1 ? "обои флизелиновые 1,06" : "обои 0,53", qty: rolls + " рул." },
-          { key: "KLEY_OBOYNY", name: "Обойный клей", q: "обойный клей", qty: glue + " уп." },
-          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения" }
-        ]
+        warn: warn
       };
     },
 
@@ -537,12 +524,7 @@
         big: { label: "Нужно краски", value: fmt(liters, 1), unit: "л" },
         sub: cans ? cans + " " + plural(cans, "банка", "банки", "банок") + " по " + fmt(can) + " л" : "",
         rows: rows,
-        warn: coverage > 12 ? ["Расход больше 12 м²/л встречается редко — проверьте значение на банке."] : [],
-        shop: [
-          { key: "KRASKA", name: surface === "ceiling" ? "Краска для потолка" : "Краска для стен", q: surface === "ceiling" ? "краска для потолка" : "краска для стен моющаяся", qty: cans ? cans + " × " + fmt(can) + " л" : fmt(liters, 1) + " л" },
-          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка для стен под покраску", qty: fmt(primer, 1) + " л" },
-          { key: "MALYARNY_INSTRUMENT", name: "Валики и кюветы", q: "набор малярный валик кювета" }
-        ]
+        warn: coverage > 12 ? ["Расход больше 12 м²/л встречается редко — проверьте значение на банке."] : []
       };
     },
 
@@ -580,12 +562,7 @@
         big: { label: "Нужно ламината", value: fmt(packs, 0), unit: plural(packs, "упаковка", "упаковки", "упаковок") },
         sub: fmt(buyM2) + " м² · запас " + fmt(reserve * 100, 0) + "%",
         rows: rows,
-        warn: reserve < 0.05 ? ["Запас меньше 5% подходит только для идеально прямоугольной комнаты без подрезки."] : [],
-        shop: [
-          { key: "LAMINAT", name: "Ламинат", q: "ламинат 33 класс", qty: packs + " упак." },
-          { key: "PODLOZHKA", name: "Подложка", q: "подложка под ламинат", qty: underlay ? underlay + " рул." : "" },
-          { key: "PLINTUS", name: "Плинтус", q: "плинтус напольный", qty: plinths ? plinths + " шт." : "" }
-        ]
+        warn: reserve < 0.05 ? ["Запас меньше 5% подходит только для идеально прямоугольной комнаты без подрезки."] : []
       };
     },
 
@@ -630,12 +607,7 @@
         big: { label: "Нужно штукатурки", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") },
         sub: "по " + fmt(bag) + " кг · " + fmt(kg, 1) + " кг смеси",
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "SHTUKATURKA", name: rate < 1.2 ? "Гипсовая штукатурка" : "Цементная штукатурка", q: rate < 1.2 ? "штукатурка гипсовая 30 кг" : "штукатурка цементная 25 кг", qty: bagCount + " меш." },
-          { key: "MAYAKI", name: "Маяки штукатурные", q: "маяк штукатурный 6 мм 3 м", qty: pcs(beacons) },
-          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения 10 л", qty: fmt(primer, 1) + " л" }
-        ]
+        warn: warn
       };
     },
 
@@ -671,12 +643,7 @@
         big: { label: "Нужно шпаклёвки", value: fmt(total, 1), unit: "кг" },
         sub: [startKg ? up(startKg / bs) + " меш. стартовой" : "", finishKg ? up(finishKg / bf) + " меш. финишной" : ""].filter(Boolean).join(" · "),
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "SHPAKLEVKA_START", name: "Стартовая шпаклёвка", q: "шпаклевка стартовая гипсовая", qty: startKg ? up(startKg / bs) + " меш." : "" },
-          { key: "SHPAKLEVKA_FINISH", name: "Финишная шпаклёвка", q: "шпаклевка финишная полимерная", qty: finishKg ? up(finishKg / bf) + " меш." : "" },
-          { key: "GRUNTOVKA", name: "Грунтовка", q: "грунтовка глубокого проникновения", qty: fmt(primer, 1) + " л" }
-        ]
+        warn: warn
       };
     },
 
@@ -760,12 +727,7 @@
         big: { label: "Нужно гипсокартона", value: fmt(sheets, 0), unit: plural(sheets, "лист", "листа", "листов") },
         sub: fmt(cladding) + " м² обшивки · " + (memberPieces + guidePieces) + " шт. профиля",
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "GIPSOKARTON", name: "Гипсокартон", q: "гипсокартон 12,5 мм", qty: sheets + " л." },
-          { key: "PROFIL_GKL", name: "Профиль для ГКЛ", q: mode === "partition" ? "профиль ПС 50х50" : "профиль ПП 60х27", qty: memberPieces + guidePieces + " шт." },
-          { key: "SAMOREZY", name: "Саморезы и крепёж", q: "саморезы по гипсокартону 3,5х25", qty: "" }
-        ]
+        warn: warn
       };
     },
 
@@ -810,12 +772,7 @@
           : { label: "Нужно утеплителя", value: fmt(boards, 0), unit: plural(boards, "плита", "плиты", "плит") },
         sub: (packs ? "по " + perPack + " плит · " : "") + fmt(volume, 2) + " м³",
         rows: rows,
-        warn: warn,
-        shop: [
-          { key: "UTEPLITEL", name: "Утеплитель " + fmt(bt) + " мм", q: "утеплитель минеральная вата " + fmt(bt) + " мм", qty: packs ? packs + " упак." : pcs(boards) },
-          { key: "PAROIZOLYACIYA", name: "Пароизоляционная плёнка", q: "пароизоляция", qty: film + " м²" },
-          { key: "DYUBELI_GRIBKI", name: "Дюбели-грибки", q: "дюбель для теплоизоляции", qty: dowels ? pcs(dowels) : "" }
-        ]
+        warn: warn
       };
     },
 
@@ -833,7 +790,7 @@
         ["Объём раствора", fmt(up1(volume * 100) / 100, 2) + " м³"]
       ];
       var warn = [];
-      var big, sub, shop;
+      var big, sub;
       if (mix === "diy") {
         // Объём сухих компонентов на 1 м³ раствора — 1,3 м³ (песок и цемент уплотняются при затворении).
         var parts = num("ratio", 3);
@@ -846,11 +803,6 @@
         rows.push(["Фиброволокно", "≈ " + fmt(up1(v * 0.9), 1) + " кг"]);
         big = { label: "Нужно цемента", value: fmt(cementBags, 0), unit: plural(cementBags, "мешок", "мешка", "мешков") };
         sub = "цемента по 50 кг · " + fmt(sandM3, 2) + " м³ песка";
-        shop = [
-          { key: "CEMENT", name: "Цемент М500", q: "цемент м500 50 кг", qty: cementBags + " меш." },
-          { key: "PESOK", name: "Песок строительный", q: "песок строительный", qty: fmt(sandM3, 2) + " м³" },
-          { key: "FIBRA", name: "Фиброволокно", q: "фиброволокно полипропиленовое" }
-        ];
         if (thick < 30) warn.push("Цементно-песчаную стяжку делают толщиной от 30 мм, на разделительном слое или утеплителе — от 40 мм.");
       } else {
         var rate = num("rate");
@@ -864,17 +816,13 @@
         if (price) rows.push(["Стоимость смеси", money(bagCount * price)]);
         big = { label: "Нужно смеси", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") };
         sub = "по " + fmt(bag) + " кг · " + fmt(kg, 1) + " кг смеси";
-        shop = [
-          { key: rate < 1.8 ? "NALIVNOY_POL" : "PESKOBETON", name: rate < 1.8 ? "Наливной пол" : "Смесь для стяжки", q: rate < 1.8 ? "наливной пол самовыравнивающийся" : "пескобетон м300 40 кг", qty: bagCount + " меш." }
-        ];
         if (rate >= 1.8 && thick < 30) warn.push("Цементно-песчаную стяжку делают толщиной от 30 мм. Для тонкого выравнивания выберите наливной пол.");
         if (rate < 1.8 && thick > 100) warn.push("Наливной пол заливают обычно слоем до 100 мм — проверьте инструкцию смеси.");
       }
       rows.push(["Демпферная лента", "≈ " + fmt(up(r.perimeter * 1.05), 0) + " м"]);
       if (mix === "diy") rows.push(["Армирующая сетка", "≈ " + up(r.floor * 1.1) + " м²"]);
-      shop.push({ key: "DEMPFERNAYA_LENTA", name: "Демпферная лента", q: "демпферная лента", qty: up(r.perimeter * 1.05) + " м" });
 
-      return { big: big, sub: sub, rows: rows, warn: warn, shop: shop };
+      return { big: big, sub: sub, rows: rows, warn: warn };
     },
 
     brick: function () {
@@ -917,12 +865,7 @@
         big: { label: "Нужно кирпича", value: fmt(bricks, 0), unit: plural(bricks, "кирпич", "кирпича", "кирпичей") },
         sub: fmt(mortarM3, 2) + " м³ раствора",
         rows: rows,
-        warn: reserve < 0.05 ? ["Запас меньше 5% — кирпич бьётся при перевозке и подрезке."] : [],
-        shop: [
-          { key: "KIRPICH", name: "Кирпич", q: h > 0.1 ? "кирпич двойной" : h > 0.07 ? "кирпич полуторный" : "кирпич одинарный", qty: pcs(bricks) },
-          { key: "CEMENT", name: "Цемент М500", q: "цемент м500 50 кг", qty: up(cementKg / 50) + " меш." },
-          { key: "KLADOCHNAYA_SETKA", name: "Кладочная сетка", q: "сетка кладочная" }
-        ]
+        warn: reserve < 0.05 ? ["Запас меньше 5% — кирпич бьётся при перевозке и подрезке."] : []
       };
     }
   };

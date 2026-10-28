@@ -49,7 +49,7 @@ python3 tools/build.py
 |---|---|---|
 | `METRIKA_ID` | ✅ заменён на `113822395` в `assets/site.js` (`metrikaId`), `tools/build.py` (`metrika_counter`, для `<noscript>`) и на всех страницах | номер счётчика Яндекс Метрики |
 | `RSY_BLOCK_ID` | `assets/site.js` (переменная `rsyBlockId`) | ID блока РСЯ, например `R-A-1234567-1` |
-| `AFFILIATE_URL_*` (29 шт.) | `assets/partners.js`, объект `AFFILIATE` | партнёрские ссылки на товар или категорию |
+| `AFFILIATE_URL_*` | ✅ заменены на партнёрские ссылки Максидома в `assets/partners.js` (объект `SHOP`) | — |
 | `YANDEX_VERIFICATION_CODE` | `tools/build.py`, шаблон `<head>`: раскомментировать строку, затем пересборка | код из Яндекс Вебмастера |
 | `GOOGLE_VERIFICATION_CODE` | там же | код из Google Search Console |
 
@@ -68,17 +68,24 @@ grep -rl METRIKA_ID --exclude=README.md . | xargs sed -i 's/METRIKA_ID/98765432/
 | Идентификатор цели | Когда срабатывает | Параметры |
 |---|---|---|
 | `calc_done` | первый расчёт после ввода данных пользователем (один раз за визит) | `calc` — калькулятор |
-| `affiliate_click` | клик по кнопке «Купить →» или ссылке «Сравнить цены» | `calc`, `item` — материал, `shop` — магазин или `affiliate` |
+| `affiliate_click` | клик по кнопке «Купить в Максидоме» или маленькой кнопке под ней | `calc` — калькулятор, `item` — ключ ссылки (например `PLITKA`, `ZATIRKA`), `shop` — `maxidom` |
 
 ### Партнёрские ссылки
 
-Под каждым результатом выводится блок «Купить материал». В нём кнопка «Купить →» для каждого материала и ссылки «Сравнить цены» в магазинах. Все ссылки открываются в новой вкладке и помечены `rel="sponsored nofollow"`.
+Под каждым калькулятором стоит блок «Купить …» с кнопкой **«Купить в Максидоме»**. Все ссылки — партнёрские, через `https://uuwgc.com/`, ни одна не ведёт напрямую на maxidom.ru. Они открываются в новой вкладке, помечены `rel="sponsored nofollow"`, а клик отправляет в Метрику цель `affiliate_click`.
 
-- Кнопка «Купить →» ведёт на `AFFILIATE.<МАТЕРИАЛ>` из `assets/partners.js`. Пока там заглушка `AFFILIATE_URL_…`, кнопка ведёт на поиск этого товара в первом магазине списка `PARTNERS`, поэтому битых ссылок нет.
-- `PARTNERS` — магазины для «Сравнить цены». В поле `wrap` можно указать шаблон партнёрской сети (deeplink), например `https://ad.admitad.com/g/ВАШ_КОД/?ulp={url}`.
-- Проверьте, что поисковые адреса магазинов (`search`) работают.
+Ссылки и состав кнопок задаются в `assets/partners.js`, объект `SHOP`:
 
-Полный список заглушек: `PLITKA`, `KLEY_PLITOCHNY`, `ZATIRKA`, `OBOI`, `KLEY_OBOYNY`, `KRASKA`, `GRUNTOVKA`, `MALYARNY_INSTRUMENT`, `LAMINAT`, `PODLOZHKA`, `PLINTUS`, `SHTUKATURKA`, `MAYAKI`, `SHPAKLEVKA_START`, `SHPAKLEVKA_FINISH`, `GIPSOKARTON`, `PROFIL_GKL`, `SAMOREZY`, `UTEPLITEL`, `PAROIZOLYACIYA`, `DYUBELI_GRIBKI`, `PESKOBETON`, `NALIVNOY_POL`, `CEMENT`, `PESOK`, `FIBRA`, `DEMPFERNAYA_LENTA`, `KIRPICH`, `KLADOCHNAYA_SETKA`. Каждая записывается как `AFFILIATE_URL_<имя>`.
+| Калькулятор | Кнопка «Купить в Максидоме» | Маленькие кнопки |
+|---|---|---|
+| Плитка | плитка | «Клей для плитки», «Затирка» |
+| Обои | обои | — |
+| Краска | краски для стен и потолков | «Грунтовка» |
+| Ламинат | ламинат | — |
+| Гипсокартон | гипсокартон | — |
+| Штукатурка, шпаклёвка, утеплитель, стяжка, кирпич | строительные материалы | «Остальное» |
+
+Под каждым блоком выводится маркировка: «Реклама. ООО МАКСИДОМ, ИНН 7804064663, erid: …». erid берётся автоматически из параметра `erid` ссылок, показанных в блоке. При смене ссылки или рекламодателя поменяйте `links`, `advertiser` и `inn` в `SHOP`.
 
 ### Реклама РСЯ
 
