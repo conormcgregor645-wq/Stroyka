@@ -29,6 +29,19 @@
     if (metrikaOn && typeof window.ym === "function") window.ym(Number(metrikaId), "reachGoal", name, params);
   };
 
+  // Клик по партнёрской ссылке — на калькуляторах и в статьях.
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest && e.target.closest("a[data-aff]");
+    if (!link) return;
+    var form = document.querySelector("[data-calc]");
+    var pageName = location.pathname.split("/").pop().replace(/\.html$/, "") || "index";
+    window.rkGoal("affiliate_click", {
+      calc: form ? form.getAttribute("data-calc") : pageName,
+      item: link.getAttribute("data-aff"),
+      shop: link.getAttribute("data-shop")
+    });
+  });
+
   /* ---------- Реклама РСЯ ---------- */
 
   var slots = document.querySelectorAll("[data-rsy]");

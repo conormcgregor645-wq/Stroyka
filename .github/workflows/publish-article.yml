@@ -1,0 +1,82 @@
+# Автопубликация статьи «Сколько плитки нужно на ванную».
+#
+# 1 ноября 2026 в 09:00 по Москве (06:00 UTC) сливает ветку статьи в main.
+# GitHub Pages после этого пересобирает сайт. Если GitHub задержит или
+# пропустит первый запуск, повторы идут каждые 30 минут до 10:30 МСК.
+# Повторные запуски ничего не делают, если статья уже в main.
+#
+# Отменить публикацию: Actions → «Публикация статьи…» → «…» → Disable workflow,
+# или удалить ветку article/skolko-plitki-na-vannuyu, или удалить этот файл.
+# Опубликовать раньше: Actions → «Публикация статьи…» → Run workflow → force = true.
+name: Публикация статьи «Сколько плитки нужно на ванную»
+
+on:
+  schedule:
+    - cron: "0,30 6-7 1 11 *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Опубликовать сейчас, не дожидаясь 01.11.2026 09:00 МСК"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: publish-article
+  cancel-in-progress: false
+
+env:
+  ARTICLE_BRANCH: article/skolko-plitki-na-vannuyu
+  PUBLISH_AT: "2026-11-01T06:00:00Z"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверить дату публикации
+        id: when
+        run: |
+          now=$(date -u +%s)
+          at=$(date -u -d "$PUBLISH_AT" +%s)
+          if [ "${{ inputs.force }}" = "true" ] || [ "$now" -ge "$at" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Ещё рано: публикация в $PUBLISH_AT (09:00 МСК). Ничего не делаю."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.when.outputs.go == 'true'
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Слить ветку статьи в main
+        id: merge
+        if: steps.when.outputs.go == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git ls-remote --exit-code --heads origin "$ARTICLE_BRANCH" > /dev/null; then
+            echo "Ветки $ARTICLE_BRANCH нет — публиковать нечего."
+            exit 0
+          fi
+          git fetch origin "$ARTICLE_BRANCH"
+          if git merge-base --is-ancestor "origin/$ARTICLE_BRANCH" HEAD; then
+            echo "Статья уже в main."
+            exit 0
+          fi
+          git merge --no-ff "origin/$ARTICLE_BRANCH" -m "Публикация статьи «Сколько плитки нужно на ванную»"
+          git push origin HEAD:main
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+
+      - name: Пересобрать GitHub Pages
+        if: steps.merge.outputs.merged == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" \
+            || echo "::warning::Не удалось запросить сборку Pages — она запустится от пуша в main."

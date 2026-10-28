@@ -258,10 +258,6 @@
     if (act === "share") share(btn);
     if (act === "print") window.print();
   });
-  document.addEventListener("click", function (e) {
-    var link = e.target.closest("a[data-aff]");
-    if (link) goal("affiliate_click", { calc: type, item: link.getAttribute("data-aff"), shop: link.getAttribute("data-shop") });
-  });
 
   /* ---------- схема комнаты (SVG в масштабе) ---------- */
 
