@@ -23,6 +23,8 @@ SITE_URL = "https://metrazh.online/"
 SITE_NAME = "Метраж"
 # Дата для <lastmod> в sitemap.xml.
 LASTMOD = "2026-10-12"
+# Подтверждение сайта в партнёрской сети Mitgo (Admitad) — только на главной.
+MITGO_VERIFY = '\n<meta name="mitgo-verification" content="5d60c4fe-cbf5-4f7c-a4eb-ab32dc9be0b9" />'
 # Номер счётчика Метрики для <noscript> — тот же, что в assets/site.js.
 metrika_counter = "113822395"
 
@@ -189,7 +191,7 @@ def nav_html(fn):
     return links + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
 
 
-def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main=""):
+def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main="", verify=""):
     canon = SITE_URL + ("" if fn == "index.html" else fn)
 
     ld = []
@@ -230,7 +232,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
-<!-- <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE"> -->
+<!-- <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE"> -->{verify}
 {ICONS_HEAD}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -340,7 +342,7 @@ def build_index():
     page("index.html",
          "Калькулятор ремонта — расчёт плитки, обоев, краски, штукатурки и других материалов",
          "Бесплатные строительные калькуляторы: плитка, обои, краска, ламинат, штукатурка, шпаклёвка, гипсокартон, утеплитель, стяжка и кирпич. С учётом окон, дверей и запаса.",
-         main, faq)
+         main, faq, verify=MITGO_VERIFY)
 
 
 # ---------- калькуляторы ----------
