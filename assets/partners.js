@@ -31,10 +31,10 @@ window.SHOP = {
     paint: { main: "KRASKA", extra: [["GRUNTOVKA", "Грунтовка"]] },
     laminate: { main: "LAMINAT" },
     drywall: { main: "GIPSOKARTON" },
-    plaster: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
-    putty: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
-    insulation: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
-    screed: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] },
-    brick: { main: "OSTALNOE", extra: [["OSTALNOE", "Остальное"]] }
+    plaster: { main: "OSTALNOE" },
+    putty: { main: "OSTALNOE" },
+    insulation: { main: "OSTALNOE" },
+    screed: { main: "OSTALNOE" },
+    brick: { main: "OSTALNOE" }
   }
 };
