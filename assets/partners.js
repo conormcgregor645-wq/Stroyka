@@ -22,6 +22,8 @@ window.SHOP = {
     GRUNTOVKA: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fgruntovka%2F",
     LAMINAT: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Flaminat%2F",
     GIPSOKARTON: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fgipsokarton%2F",
+    // Наливной пол — раздел «Строительные материалы».
+    NALIVNOY_POL: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fstroitelnye-materialy%2F",
     // Штукатурка, шпаклёвка, утеплитель, стяжка, кирпич — раздел «Строительные материалы».
     OSTALNOE: "https://uuwgc.com/g/vw6dqabpgkfe6c34cc86b6a2cdd7f0/?erid=25H8d7vbP8SRTvH4HtSZJ1&ulp=https%3A%2F%2Fwww.maxidom.ru%2Fcatalog%2Fstroitelnye-materialy%2F"
   },
@@ -35,6 +37,7 @@ window.SHOP = {
     putty: { main: "OSTALNOE" },
     insulation: { main: "OSTALNOE" },
     screed: { main: "OSTALNOE" },
-    brick: { main: "OSTALNOE" }
+    brick: { main: "OSTALNOE" },
+    selflevel: { main: "NALIVNOY_POL", extra: [["GRUNTOVKA", "Грунтовка"]] }
   }
 };

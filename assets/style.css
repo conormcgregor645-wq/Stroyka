@@ -195,6 +195,7 @@ main { flex: 1 0 auto; }
 .res-rows li b { font-family: var(--mono); font-weight: 700; font-size: 15px; text-align: right; flex: 0 1 auto; }
 .res-rows li.cost b { color: var(--on-dark); }
 .res-warn { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: rgba(240, 162, 122, .12); color: var(--on-dark-text); font-size: 14px; border-radius: 0 8px 8px 0; }
+.res-warn a { color: var(--on-dark); font-weight: 700; }
 .res-error { margin: 0; font-size: 16px; line-height: 1.5; color: var(--on-dark); }
 .res-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .res-actions button { flex: 1 1 120px; min-height: 48px; border-radius: 10px; font: 700 15px var(--font); cursor: pointer; }
@@ -218,6 +219,9 @@ main { flex: 1 0 auto; }
 .pl-dim { fill: none; stroke: var(--ink); stroke-width: 1; }
 .pl-box { fill: var(--card); }
 .svg-hint { font: 600 14px var(--font); fill: var(--muted); }
+.pl-base { fill: var(--line); stroke: var(--ink); stroke-width: 1.5; }
+.pl-mix { fill: var(--tint); stroke: var(--accent); stroke-width: 1.5; }
+.pl-level { fill: none; stroke: var(--ink); stroke-width: 2; }
 
 /* блок «Купить …» */
 .buy-card { background: var(--card); border: 1.5px solid var(--ink); border-radius: var(--radius); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; }

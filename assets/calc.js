@@ -209,7 +209,8 @@
     });
     html += "</ul>";
     (r.warn || []).forEach(function (w) {
-      html += '<p class="res-warn">' + esc(w) + "</p>";
+      html += '<p class="res-warn">' + (typeof w === "string" ? esc(w)
+        : esc(w.text) + ' <a href="' + esc(w.href) + '">' + esc(w.link) + "</a>") + "</p>";
     });
     html +=
       '<div class="res-actions">' +
@@ -265,8 +266,37 @@
   var planLabel = document.getElementById("plan-label");
   var BRICK_DEPTH = { "0.5": 0.12, "1": 0.25, "1.5": 0.38, "2": 0.51 };
 
+  // Разрез наливного пола: основание с перепадом и ровный слой смеси сверху.
+  function drawSection() {
+    var tMin = num("min_mm"), tMax = num("max_mm");
+    if (!(tMax > 0) || tMin > tMax) {
+      planEl.innerHTML = '<text x="170" y="124" text-anchor="middle" class="svg-hint">Введите толщину слоя</text>';
+      planEl.setAttribute("aria-label", "Разрез появится после ввода толщины слоя");
+      if (planLabel) planLabel.textContent = "";
+      return;
+    }
+    var x0 = 30, x1 = 310, top = 72, k = 100 / tMax;
+    var hL = tMax * k, hR = tMin > 0 ? Math.max(3, tMin * k) : 0;
+    var avg = (tMin + tMax) / 2;
+    var svg = '<text class="svg-hint" x="170" y="56" text-anchor="middle">уровень готового пола</text>';
+    svg += '<polygon class="pl-base" points="' + [x0, top + hL, x1, top + hR, x1, 214, x0, 214].join(" ") + '"/>';
+    svg += '<polygon class="pl-mix" points="' + [x0, top, x1, top, x1, top + hR, x0, top + hL].join(" ") + '"/>';
+    svg += '<path class="pl-level" d="M' + (x0 - 14) + " " + top + "H" + (x1 + 14) + '"/>';
+    svg += '<text class="svg-hint" x="170" y="204" text-anchor="middle">основание</text>';
+    // подписи толщины слева (макс.) и справа (мин.)
+    svg += '<path class="pl-dim" d="M' + (x0 - 8) + " " + top + "V" + (top + hL) + "M" + (x1 + 8) + " " + top + "V" + (top + hR) + '"/>';
+    svg += '<rect class="pl-box" x="' + (x0 + 4) + '" y="' + (top + hL / 2 - 9) + '" width="58" height="18"/>' +
+      '<text class="svg-num" x="' + (x0 + 8) + '" y="' + (top + hL / 2 + 4) + '">' + esc(fmt(tMax, 1)) + " мм</text>";
+    svg += '<rect class="pl-box" x="' + (x1 - 62) + '" y="' + (top + Math.max(hR, 18) / 2 - 9) + '" width="58" height="18"/>' +
+      '<text class="svg-num" x="' + (x1 - 8) + '" y="' + (top + Math.max(hR, 18) / 2 + 4) + '" text-anchor="end">' + esc(fmt(tMin, 1)) + " мм</text>";
+    planEl.innerHTML = svg;
+    planEl.setAttribute("aria-label", "Разрез пола: слой смеси от " + fmt(tMin, 1) + " до " + fmt(tMax, 1) + " мм");
+    if (planLabel) planLabel.textContent = tMin === tMax ? "слой " + fmt(avg, 1) + " мм" : fmt(tMin, 1) + "–" + fmt(tMax, 1) + " мм, ср. " + fmt(avg, 1);
+  }
+
   function drawPlan() {
     if (!planEl) return;
+    if (type === "selflevel") return drawSection();
     var L = num("room_l"), W = num("room_w");
     var surface = val("surface"), mode = val("mode");
     var oneWall = type === "brick" && mode === "one";
@@ -819,6 +849,50 @@
       if (mix === "diy") rows.push(["Армирующая сетка", "≈ " + up(r.floor * 1.1) + " м²"]);
 
       return { big: big, sub: sub, rows: rows, warn: warn };
+    },
+
+    selflevel: function () {
+      var r = room();
+      var byArea = val("area_mode") === "area";
+      var area = byArea ? num("area") : r.floor;
+      var tMin = num("min_mm"), tMax = num("max_mm");
+      var custom = val("mixtype") === "custom";
+      var rate = custom ? num("rate") : 1.6;
+      var bag = num("bag");
+      var reserve = num("reserve") / 100;
+      var price = num("price");
+      if (!area) return { error: byArea ? "Введите площадь пола." : "Введите длину и ширину комнаты." };
+      if (!tMax) return { error: "Введите толщину слоя." };
+      if (tMin > tMax) return { error: "Толщина в самом тонком месте больше, чем в самом толстом. Проверьте значения." };
+      if (!rate) return { error: "Введите расход смеси на 1 мм." };
+      if (!bag) return { error: "Выберите вес мешка." };
+
+      // Масса = площадь × средняя толщина × расход на 1 мм + запас; кг — вверх до сотых.
+      var avg = (tMin + tMax) / 2;
+      var kg = up(area * avg * rate * (1 + reserve) * 100) / 100;
+      var bagCount = up(kg / bag);
+      var primer = up1(area * 0.15);
+
+      var rows = [
+        ["Площадь пола", fmt(area) + " м²"],
+        ["Средняя толщина", fmt(avg, 1) + " мм" + (tMin !== tMax ? " (" + fmt(tMin, 1) + "–" + fmt(tMax, 1) + ")" : "")],
+        ["Расход на 1 м²", fmt(rate * avg, 2) + " кг"],
+        ["Смесь с запасом", fmt(kg, 2) + " кг"],
+        ["Грунтовка", "≈ " + fmt(primer, 1) + " л"],
+        ["Демпферная лента", byArea ? "по периметру комнаты" : fmt(r.perimeter, 2) + " м"]
+      ];
+      if (price) rows.push(["Стоимость смеси", money(bagCount * price)]);
+
+      var warn = [];
+      if (avg < 3) warn.push("Для такого тонкого слоя подойдёт только финишная смесь.");
+      if (avg > 100) warn.push({ text: "При таком перепаде дешевле сделать стяжку.", href: "styazhka.html", link: "Калькулятор стяжки →" });
+
+      return {
+        big: { label: "Нужно смеси", value: fmt(bagCount, 0), unit: plural(bagCount, "мешок", "мешка", "мешков") },
+        sub: "по " + fmt(bag) + " кг · " + fmt(kg, 2) + " кг смеси",
+        rows: rows,
+        warn: warn
+      };
     },
 
     brick: function () {
