@@ -11,9 +11,12 @@
 после правок здесь. Правки, сделанные вручную прямо в HTML, при пересборке
 затираются.
 """
+import html
 import json
+import math
 import os
-from urllib.parse import urlparse
+import re
+from urllib.parse import parse_qs, urlencode, urlparse
 
 # ===== НАСТРОЙКИ =====
 # Базовый адрес сайта со слешем на конце. После переезда на свой домен
@@ -62,6 +65,15 @@ CALCS = [
     ("styazhka.html", "Стяжка", "Стяжка пола", "Смесь по толщине"),
     ("kirpich.html", "Кирпич", "Кирпич", "Штуки и раствор"),
 ]
+# Статьи: файл, заголовок (H1), описание для списка, дата публикации (ISO), дата для людей.
+ARTICLES = [
+    ("skolko-plitki-na-vannuyu.html",
+     "Сколько плитки нужно на ванную: готовые расчёты для 2×2, 2×3 и 3×3 м",
+     "Таблица с плиткой, упаковками, клеем и затиркой для трёх типовых ванных, как измерить комнату, что вычесть и сколько брать запаса.",
+     "2026-11-01T09:00:00+03:00", "1 ноября 2026"),
+]
+ARTICLE_FILES = {a[0] for a in ARTICLES} | {"stati.html"}
+
 # В шапке — четыре главных калькулятора, текущий (если его среди них нет) и «Все калькуляторы».
 NAV_MAIN = ["plitka.html", "oboi.html", "kraska.html", "laminat.html"]
 CHECK = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9481A" stroke-width="2.4" '
@@ -188,21 +200,27 @@ def nav_html(fn):
     labels = {c[0]: c[1] for c in CALCS}
     links = "".join(f'<a href="{h}"{" aria-current=\"page\"" if h == fn else ""}>{labels[h]}</a>' for h in files)
     all_href = "#calc" if fn == "index.html" else "index.html#calc"
-    return links + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
+    articles = f'<a href="stati.html"{" aria-current=\"page\"" if fn in ARTICLE_FILES else ""}>Статьи</a>'
+    return links + articles + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
 
 
-def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main="", verify=""):
+def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main="", verify="",
+         trail=(), ld_extra=(), app=True, lastmod=None):
+    """trail — промежуточные крошки [(название, файл)]; ld_extra — дополнительная разметка Schema.org;
+    app — добавлять WebApplication (для калькуляторов); lastmod — дата для sitemap."""
     canon = SITE_URL + ("" if fn == "index.html" else fn)
 
     ld = []
     if crumb:
         ld.append({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Главная", "item": SITE_URL},
-            {"@type": "ListItem", "position": 2, "name": crumb, "item": canon}]})
+            {"@type": "ListItem", "position": 1, "name": "Главная", "item": SITE_URL}]
+            + [{"@type": "ListItem", "position": i + 2, "name": n, "item": SITE_URL + h} for i, (n, h) in enumerate(trail)]
+            + [{"@type": "ListItem", "position": len(trail) + 2, "name": crumb, "item": canon}]})
+    ld.extend(ld_extra)
     if faq:
         ld.append({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
             {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faq]})
-    if crumb:
+    if crumb and app:
         ld.append({"@context": "https://schema.org", "@type": "WebApplication", "name": crumb, "url": canon,
                    "applicationCategory": "UtilitiesApplication", "operatingSystem": "Any",
                    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "RUB"}})
@@ -211,7 +229,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
     is_calc = fn in {c[0] for c in CALCS}
     scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/calc.js"></script>' if is_calc else ""
     robots_meta = f'\n<meta name="robots" content="{robots}">' if robots else ""
-    footer_links = '<a href="index.html">Все калькуляторы</a>' + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
+    footer_links = '<a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a>' + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
     host = urlparse(SITE_URL).hostname
 
     html = f'''<!doctype html>
@@ -259,7 +277,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
     with open(os.path.join(ROOT, fn), "w", encoding="utf-8") as f:
         f.write(html)
     if in_sitemap:
-        SITEMAP.append(canon)
+        SITEMAP.append((canon, lastmod or LASTMOD))
 
 
 SITEMAP = []
@@ -271,7 +289,7 @@ MBAR = '''
 </div>'''
 
 
-def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how, norms, faq):
+def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how, norms, faq, related=""):
     """Страница калькулятора: форма и результат, схема, покупка, реклама, «Как считается», нормы, FAQ."""
     main = f'''<main class="wrap calc-page">
 <nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>{h1}</span></nav>
@@ -284,6 +302,7 @@ def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how
 {how}
 <h2>Нормы расхода</h2>
 {norms}
+{related}
 {faq_html(faq)}
 </article>
 </main>'''
@@ -335,6 +354,10 @@ def build_index():
 <h2>Три шага до списка покупок</h2>
 <div class="steps-grid">{steps_html}</div>
 </div></section>
+<section class="wrap useful">
+<h2>Полезное</h2>
+<div class="posts">{"".join(article_card(a) for a in ARTICLES)}</div>
+</section>
 <section class="wrap home-faq">
 {faq_html(faq, open_cards=True)}
 </section>
@@ -366,7 +389,8 @@ def build_tile():
               "tile", "Купить плитку и клей", "Схема пола", inputs, how, norms,
               [("Какой запас плитки брать?", "При прямой укладке — 10%, при диагональной — 15%, для сложных раскладок (ёлочка, модульная) — до 20%. Для крупного формата от 60×60 запас лучше не уменьшать: такую плитку сложно резать без сколов."),
                ("Как посчитать плитку для ванной?", "Выберите «Пол и стены», введите размеры ванной и добавьте дверь. Если стены облицовываются не до потолка, укажите вместо высоты комнаты высоту укладки."),
-               ("Сколько клея нужно на 1 м² плитки?", "В среднем 3,5–6 кг на м² в зависимости от размера плитки и ровности основания. Точный расход указан на мешке клея.")])
+               ("Сколько клея нужно на 1 м² плитки?", "В среднем 3,5–6 кг на м² в зависимости от размера плитки и ровности основания. Точный расход указан на мешке клея.")],
+              related='<h2>По теме</h2>\n<div class="posts">' + article_card(ARTICLES[0]) + "</div>")
 
 
 def build_wallpaper():
@@ -615,6 +639,214 @@ def build_brick():
                ("Как учитывать окна и двери?", "Добавьте проёмы в калькулятор — их площадь вычтется из площади кладки. Перемычки над проёмами в расчёт не входят.")])
 
 
+# ---------- статьи ----------
+
+def article_card(a):
+    fn, title, desc, _, human = a
+    return (f'<a class="post-card" href="{fn}"><span class="eyebrow">Статья · {human}</span>'
+            f'<span class="post-title">{title}</span><span class="post-desc">{desc}</span>'
+            f'<span class="post-go">Читать →</span></a>')
+
+
+def shop_config():
+    """Партнёрские ссылки и данные рекламодателя — из того же assets/partners.js, что у калькуляторов."""
+    with open(os.path.join(ROOT, "assets", "partners.js"), encoding="utf-8") as f:
+        js = f.read()
+    links = dict(re.findall(r'^\s+([A-Z_]+): "(https://[^"]+)"', js, re.M))
+    def get(key):
+        return re.search(r'\b' + key + r': "([^"]+)"', js).group(1)
+    return links, get("button"), get("advertiser"), get("inn"), get("id")
+
+
+def buy_static(title, lead, main, extras):
+    """Блок «Купить …» для статей: та же разметка, что строит calc.js на калькуляторах."""
+    links, button, advertiser, inn, shop_id = shop_config()
+    def link(key, text, cls):
+        return (f'<a class="{cls}" href="{html.escape(links[key])}" target="_blank" rel="sponsored nofollow noopener"'
+                f' data-aff="{key}" data-shop="{shop_id}">{text}</a>')
+    keys = [main] + [k for k, _ in extras]
+    erids = []
+    for k in keys:
+        e = parse_qs(urlparse(links[k]).query).get("erid", [""])[0]
+        if e and e not in erids:
+            erids.append(e)
+    small = "".join(link(k, t, "buy-small") for k, t in extras)
+    return (f'<section class="buy-card"><h2>{title}</h2><p class="buy-lead">{lead}</p>'
+            f'<div class="buy-actions">{link(main, button, "buy-btn")}'
+            + (f'<div class="buy-extra">{small}</div>' if small else "")
+            + f'</div><p class="ad-mark">Реклама. {advertiser}, ИНН {inn}, erid: {", ".join(erids)}</p></section>')
+
+
+# Те же формулы, что в assets/calc.js (калькулятор плитки): округление вверх с допуском.
+def up(x):
+    return math.ceil(x - 1e-7)
+
+
+def up1(x):
+    return up(x * 10) / 10
+
+
+def tile_calc(area, a, b, reserve=10, per_pack=0, joint=2, thick=8):
+    count = up(area / ((a / 100) * (b / 100)) * (1 + reserve / 100))
+    packs = up(count / per_pack) if per_pack else 0
+    side = max(a, b)
+    glue = up(area * (3.5 if side <= 20 else 4.5 if side <= 40 else 6))
+    grout = up1(((a * 10 + b * 10) / (a * 10 * b * 10)) * thick * joint * 1.6 * area * 1.1)
+    return count, packs, glue, grout
+
+
+def ru_num(x, digits=1):
+    s = f"{x:.{digits}f}".rstrip("0").rstrip(".") if digits else str(int(x))
+    return s.replace(".", ",")
+
+
+def plitka_link(surface, L, W, H, a, b, per_pack, door=True):
+    q = {"surface": surface, "room_l": L, "room_w": W, "room_h": H, "tile_w": a, "tile_h": b,
+         "per_pack": per_pack, "joint": 2, "thickness": 8, "reserve": 10, "price": "",
+         "o": "d:0.7x2x1" if door else ""}
+    return "plitka.html?" + html.escape(urlencode(q))
+
+
+def build_stati():
+    cards = "".join(article_card(a) for a in ARTICLES)
+    main = f"""<main class="wrap calc-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>Статьи</span></nav>
+<div class="calc-head"><h1>Статьи</h1><span class="calc-tagline">Готовые расчёты материалов для ремонта</span></div>
+<p class="page-lead">Разбираем типовые ремонты на цифрах: сколько материала брать, как измерить комнату и где чаще всего ошибаются. Все расчёты сделаны теми же формулами, что в калькуляторах сайта.</p>
+<div class="posts">{cards}</div>
+</main>"""
+    page("stati.html", "Статьи о ремонте: готовые расчёты материалов — Метраж",
+         "Статьи о ремонте с готовыми расчётами: сколько плитки, обоев, краски и других материалов нужно на комнату, как измерить помещение и сколько брать запаса.",
+         main, crumb="Статьи", app=False, lastmod=ARTICLES[0][3][:10])
+
+
+def build_article_tiles():
+    fn, h1, card_desc, iso, human = ARTICLES[0]
+    H, door = 2.5, 0.7 * 2.0
+    rows_tiles, rows_mix, results = [], [], {}
+    for L, W in [(2, 2), (2, 3), (3, 3)]:
+        floor = L * W
+        walls = 2 * (L + W) * H - door
+        f_cnt, f_pk, f_glue, f_grout = tile_calc(floor, 30, 30, per_pack=11)
+        w_cnt, w_pk, w_glue, w_grout = tile_calc(walls, 25, 40, per_pack=15)
+        results[(L, W)] = (floor, f_cnt, walls, w_cnt)
+        name = f"{L}×{W} м"
+        links = (f'<a href="{plitka_link("floor", L, W, H, 30, 30, 11, door=False)}">пол</a> · '
+                 f'<a href="{plitka_link("walls", L, W, H, 25, 40, 15)}">стены</a>')
+        rows_tiles.append([f"<b>{name}</b>", ru_num(floor), f"<b>{f_cnt}</b>", f_pk, ru_num(walls), f"<b>{w_cnt}</b>", w_pk, links])
+        total_glue = f_glue + w_glue
+        rows_mix.append([f"<b>{name}</b>", f"{f_glue} кг", f"{w_glue} кг", f"{total_glue} кг ({up(total_glue / 25)} меш. по 25 кг)",
+                         f"{ru_num(f_grout)} кг", f"{ru_num(w_grout)} кг"])
+    f22, f22pk = tile_calc(4, 30, 30, per_pack=11)[:2]
+    w22 = results[(2, 2)][3]
+    # Пример «не до потолка»: ванная 2×2, плитка до 1,5 м, дверь закрывает 0,7×1,5 м этой полосы.
+    low_area = 2 * (2 + 2) * 1.5 - 0.7 * 1.5
+    low_cnt = tile_calc(low_area, 25, 40)[0]
+    ex_walls = results[(2, 3)][2]
+    btn = lambda href, text="Посчитать для своей ванной": f'<p class="cta"><a class="btn-primary" href="{href}">{text}</a></p>'
+
+    faq = [
+        ("Сколько плитки нужно на пол ванной 4 м²?",
+         f"Пол 2×2 м — это 4 м². При плитке 30×30 см и запасе 10% нужно {f22} плиток: 4 / 0,09 × 1,1 = 48,9, округляем вверх. При фасовке по 11 штук это {f22pk} упаковок."),
+        ("Почему плиток нужно больше, чем площадь, делённая на площадь плитки?",
+         "Крайние плитки у стен и вокруг двери подрезают, обрезки редко удаётся использовать, а часть плитки бьётся при резке. Поэтому к расчёту добавляют запас 10–20%, а результат округляют вверх до целой плитки и целой упаковки."),
+        ("Нужно ли класть плитку под ванной?",
+         "Это решают до покупки. Если пол под ванной плиткой не закрывают, вычтите площадь ванны из площади пола: например, ванна 1,7×0,7 м уменьшает пол на 1,19 м²."),
+        ("Сколько клея нужно на ванную 2×2 м?",
+         f"По норме калькулятора для плитки 20–40 см — около 4,5 кг на м². На пол 4 м² — {tile_calc(4, 30, 30)[2]} кг, на стены 18,6 м² — {tile_calc(18.6, 25, 40)[2]} кг, всего {tile_calc(4, 30, 30)[2] + tile_calc(18.6, 25, 40)[2]} кг, то есть {up((tile_calc(4, 30, 30)[2] + tile_calc(18.6, 25, 40)[2]) / 25)} мешков по 25 кг. Точный расход зависит от ровности основания и указан на мешке."),
+    ]
+    tiles_table = table(["Ванная", "Пол, м²", "Плитка 30×30, шт.", "Упаковок по 11", "Стены, м²", "Плитка 25×40, шт.", "Упаковок по 15", "Открыть в калькуляторе"], rows_tiles)
+    mix_table = table(["Ванная", "Клей на пол", "Клей на стены", "Клей всего", "Затирка на пол", "Затирка на стены"], rows_mix)
+    reserve_table = table(["Укладка", "Запас", "Почему"],
+                          [["Прямая, плитка по сетке", "10%", "подрезка у стен и вокруг двери, бой при резке"],
+                           ["Диагональная", "15%", "по всем стенам режутся треугольники, обрезков больше"],
+                           ["Сложная: ёлочка, модульная, крупный формат", "20%", "много подрезки и риск сколов"]])
+    buy = buy_static("Купить плитку, клей и затирку",
+                     "Плитку, клей и затирку можно выбрать в одном магазине — так проще собрать всё к началу работ.",
+                     "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("ZATIRKA", "Затирка")])
+
+    main = f"""<main class="wrap calc-page article-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><a href="stati.html">Статьи</a><span aria-hidden="true">→</span><span>Сколько плитки нужно на ванную</span></nav>
+<article class="article post">
+<header class="post-head">
+<h1>{h1}</h1>
+<p class="post-meta"><time datetime="{iso}">{human}</time> · Метраж</p>
+</header>
+<p class="post-lead">Для пола ванной 2×2 м нужно <b>{f22} плиток 30×30</b> с запасом 10%: площадь пола 4 м² делим на площадь плитки 0,09 м², прибавляем 10% и округляем вверх. Для стен той же ванной при высоте 2,5 м — <b>{w22} плиток 25×40</b>. Ниже — готовые расчёты для трёх типовых размеров, клей и затирка, а также как пересчитать всё под свою ванную.</p>
+{btn(plitka_link("both", 2, 2, H, 30, 30, 11))}
+
+<h2>Готовые расчёты для ванной 2×2, 2×3 и 3×3 м</h2>
+<p>Условия для всех трёх вариантов:</p>
+<ul>
+<li>высота стен — 2,5 м, плитка от пола до потолка;</li>
+<li>дверь 0,7×2,0 м — её площадь 1,4 м² вычитаем из стен;</li>
+<li>пол — плитка 30×30 см, стены — 25×40 см;</li>
+<li>запас — 10%, прямая укладка;</li>
+<li>фасовка: 30×30 — по 11 штук в упаковке (0,99 м²), 25×40 — по 15 штук (1,5 м²).</li>
+</ul>
+{tiles_table}
+<p>Фасовка у производителей отличается, поэтому число упаковок пересчитайте по своей коробке: оно указано на торце вместе с площадью. Ссылки «пол» и «стены» в последнем столбце открывают калькулятор с уже подставленными размерами — останется поменять то, что отличается у вас.</p>
+
+<h3>Клей и затирка</h3>
+{mix_table}
+<p>Клей считаем по норме калькулятора: для плитки со стороной от 20 до 40 см — 4,5 кг на м², на площадь без запаса. Затирку — по формуле производителей: (A + B) / (A × B) × толщина плитки × ширина шва × 1,6 кг/м² плюс 10%. Здесь взяты шов 2 мм и толщина плитки 8 мм. Если шов шире, затирки понадобится пропорционально больше.</p>
+
+<h3>Как получены цифры</h3>
+<p>Площадь пола — длина × ширина. Площадь стен — периметр × высота минус дверь. Например, для ванной 2×3 м: 2 × (2 + 3) × 2,5 = 25 м², минус дверь 1,4 м² — остаётся {ru_num(ex_walls)} м². Плитка 25×40 занимает 0,1 м², значит нужно {ru_num(ex_walls)} / 0,1 × 1,1 = 259,6, то есть 260 плиток. Результат всегда округляется вверх: 259 плиток не хватит.</p>
+
+<h2>Как измерить ванную</h2>
+<ol>
+<li>Измерьте длину и ширину комнаты у пола и на высоте около 1,5 м. Стены редко бывают идеально ровными — берите большее значение.</li>
+<li>Измерьте высоту, до которой будет плитка: до потолка или до выбранного уровня.</li>
+<li>Измерьте дверной проём — ширину и высоту.</li>
+<li>Отдельно запишите размеры ванны или душевого поддона, короба и ниш.</li>
+<li>Все размеры переводите в метры с точностью до сантиметра: 1 м 72 см — это 1,72 м.</li>
+</ol>
+
+<h2>Что вычитать: дверь, ванну и короб</h2>
+<ul>
+<li><b>Дверь.</b> Вычитайте площадь проёма: ширина × высота. В калькуляторе дверь добавляется кнопкой «Добавить проём».</li>
+<li><b>Ванна.</b> Если стену за ванной ниже борта плиткой не закрывают, вычтите эту полосу: длина ванны × высота борта. В калькуляторе её удобно добавить как ещё один проём. Если не кладёте плитку на пол под ванной, вычтите и её площадь из пола.</li>
+<li><b>Экран под ванной.</b> Если экран облицовывают плиткой, наоборот, прибавьте его площадь: длина × высота.</li>
+<li><b>Короб для труб.</b> Короб не уменьшает, а увеличивает площадь облицовки: прибавьте площадь всех его видимых граней.</li>
+</ul>
+<p>Окна в ванной редки, но если окно есть, его площадь тоже вычитается, а откосы прибавляются.</p>
+{btn(plitka_link("walls", 2, 3, H, 25, 40, 15), "Посчитать стены своей ванной")}
+
+<h2>Сколько брать запаса</h2>
+{reserve_table}
+<p>Запас нужен не только на подрезку. Плитку выпускают партиями, и у разных партий немного отличается оттенок и калибр — точный размер. Если через месяц не хватит двух плиток, той же партии в магазине может уже не быть. Поэтому всю плитку берут сразу и из одной партии: номер партии, тон и калибр указаны на коробке. После ремонта стоит оставить 2–3 целые плитки на случай замены.</p>
+
+<h2>Если стены облицовываются не до потолка</h2>
+<p>Тогда вместо высоты комнаты подставьте высоту укладки, а у двери учитывайте только ту часть проёма, что попадает в эту полосу. Пример: ванная 2×2 м, плитка до высоты 1,5 м. Стены: 2 × (2 + 2) × 1,5 = 12 м², минус часть двери 0,7 × 1,5 = 1,05 м², остаётся {ru_num(low_area, 2)} м². Плиток 25×40 с запасом 10% понадобится {low_cnt}. Стену выше плитки обычно красят — её можно посчитать в <a href="kraska.html">калькуляторе краски</a>.</p>
+
+<h2>Частые ошибки при покупке</h2>
+<ul>
+<li><b>Покупка впритык.</b> Без запаса плитки почти всегда не хватает: часть уходит на подрезку и в бой даже в простой комнате.</li>
+<li><b>Разные партии.</b> Плитка из двух партий может заметно отличаться оттенком на одной стене. Сверяйте номер партии на всех коробках.</li>
+<li><b>Счёт в квадратных метрах вместо штук и упаковок.</b> Магазин продаёт плитку упаковками, поэтому итог нужно округлить вверх до целой упаковки.</li>
+<li><b>Стены по площади пола.</b> Площадь стен ванной в 3–5 раз больше площади пола: у ванной 2×2 м это 4 м² пола и {ru_num(results[(2, 2)][2])} м² стен.</li>
+<li><b>Забытые клей и затирка.</b> Их покупают вместе с плиткой — цифры для типовых ванных есть в таблице выше.</li>
+</ul>
+
+{buy}
+{btn(plitka_link("both", 3, 3, H, 30, 30, 11))}
+{faq_html(faq)}
+</article>
+</main>"""
+
+    article_ld = {"@context": "https://schema.org", "@type": "Article", "headline": h1, "description": card_desc,
+                  "datePublished": iso, "dateModified": iso, "inLanguage": "ru",
+                  "mainEntityOfPage": SITE_URL + fn,
+                  "author": {"@type": "Organization", "name": SITE_NAME, "url": SITE_URL},
+                  "publisher": {"@type": "Organization", "name": SITE_NAME, "url": SITE_URL}}
+    page(fn, "Сколько плитки нужно на ванную: расчёт для 2×2, 2×3 и 3×3 м — Метраж",
+         "Сколько плитки нужно на ванную: готовая таблица для пола и стен ванных 2×2, 2×3 и 3×3 м — штуки, упаковки, клей и затирка. Как измерить ванную и сколько брать запаса.",
+         main, faq, crumb="Сколько плитки нужно на ванную", trail=[("Статьи", "stati.html")],
+         ld_extra=[article_ld], app=False, lastmod=iso[:10])
+    return results
+
+
 def build_404():
     cards = "".join(card(h, name, d) for h, _, name, d in CALCS)
     main = f'''<main class="wrap home-hero">
@@ -629,9 +861,9 @@ def build_404():
 def build_seo_files():
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
-        for url in SITEMAP:
+        for url, mod in SITEMAP:
             prio = "1.0" if url == SITE_URL else "0.8"
-            f.write(f"  <url><loc>{url}</loc><lastmod>{LASTMOD}</lastmod><priority>{prio}</priority></url>\n")
+            f.write(f"  <url><loc>{url}</loc><lastmod>{mod}</lastmod><priority>{prio}</priority></url>\n")
         f.write("</urlset>\n")
     # CNAME для GitHub Pages: свой домен берётся из SITE_URL.
     host = urlparse(SITE_URL).hostname
@@ -658,6 +890,8 @@ if __name__ == "__main__":
     build_insulation()
     build_screed()
     build_brick()
+    build_article_tiles()
+    build_stati()
     build_404()
     build_seo_files()
     print(f"Собрано страниц: {len(SITEMAP) + 1}, sitemap: {len(SITEMAP)} адресов, SITE_URL = {SITE_URL}")
