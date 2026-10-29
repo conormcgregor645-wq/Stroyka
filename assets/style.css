@@ -50,8 +50,8 @@
 }
 
 /* тёмная тема: графитовый фон, светлый текст, тот же оранжевый акцент.
-   Включается по настройке системы, если на сайте не выбрана светлая, или кнопкой в шапке
-   (data-theme="dark" на <html>, выбор хранится в localStorage). Печать всегда светлая. */
+   Включается по настройке системы, если на сайте не выбрана светлая, или по времени суток
+   (data-theme на <html> ставит скрипт в <head>). Печать всегда светлая. */
 @media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #16191C;
@@ -82,8 +82,6 @@
   :root:not([data-theme="light"]) .card svg, :root:not([data-theme="light"]) .post-card svg { stroke: var(--ink); }
   :root:not([data-theme="light"]) .card svg [fill="#F7E2D5"] { fill: var(--tint); }
   :root:not([data-theme="light"]) .pill svg { stroke: var(--link); }
-  :root:not([data-theme="light"]) .theme-btn .ico-moon { display: none; }
-  :root:not([data-theme="light"]) .theme-btn .ico-sun { display: block; }
 }
 @media screen {
   :root[data-theme="dark"] {
@@ -115,8 +113,6 @@
   :root[data-theme="dark"] .card svg, :root[data-theme="dark"] .post-card svg { stroke: var(--ink); }
   :root[data-theme="dark"] .card svg [fill="#F7E2D5"] { fill: var(--tint); }
   :root[data-theme="dark"] .pill svg { stroke: var(--link); }
-  :root[data-theme="dark"] .theme-btn .ico-moon { display: none; }
-  :root[data-theme="dark"] .theme-btn .ico-sun { display: block; }
 }
 :root[data-theme="light"] { color-scheme: light; }
 
@@ -169,15 +165,10 @@ main { flex: 1 0 auto; }
 .header-bar .nav { order: 2; margin-left: auto; }
 .list-link { order: 3; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 auto;
   border-radius: 10px; border: 1.5px solid rgba(245, 241, 234, .25); color: var(--on-surface); text-decoration: none; }
-.theme-btn { order: 4; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 auto; padding: 0;
-  border-radius: 10px; border: 1.5px solid rgba(245, 241, 234, .25); background: transparent; color: var(--on-surface); cursor: pointer; }
-.theme-btn:hover { background: rgba(245, 241, 234, .1); }
-.theme-btn svg { display: block; }
-.theme-btn .ico-sun { display: none; }
 .list-link:hover { background: rgba(245, 241, 234, .1); color: var(--on-surface); }
 .list-count { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
   background: var(--btn); color: var(--white); font: 700 12px/20px var(--mono); text-align: center; }
-@media (max-width: 760px) { .list-link { order: 2; margin-left: auto; } .theme-btn { order: 2; } .header-bar .nav { order: 3; margin-left: 0; } }
+@media (max-width: 760px) { .list-link { order: 2; margin-left: auto; } .header-bar .nav { order: 3; margin-left: 0; } }
 
 /* уведомление о cookie: над полосой итога (отступ снизу задаёт site.js) */
 .cookie { position: fixed; left: 16px; right: 16px; bottom: 8px; z-index: 20; max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px;
