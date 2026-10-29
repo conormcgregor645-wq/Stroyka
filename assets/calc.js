@@ -6,6 +6,7 @@
   var form = document.getElementById("calc-form");
   if (!form) return;
   var type = form.getAttribute("data-calc");
+  var isHub = type.indexOf("hub-") === 0;
   var resultEl = document.getElementById("result");
   var ROOM_KEY = "rk-room";
   var ROOM_FIELDS = ["room_l", "room_w", "room_h"];
@@ -400,9 +401,9 @@
     // Размерные линии и подписи сторон.
     var x1 = x0 + rw, y1 = y0 + rh, cx = x0 + rw / 2, cy = y0 + rh / 2;
     svg += '<path class="pl-dim" d="M' + x0 + " 16H" + x1 + "M" + x0 + " 11V21M" + x1 + " 11V21M324 " + y0 + "V" + y1 + "M319 " + y0 + "H329M319 " + y1 + 'H329"/>';
-    var lt = fmt(L) + " м", wt = oneWall ? fmt(W * 1000, 0) : fmt(W);
+    var lt = fmt(L) + " м", wt = oneWall ? fmt(W * 1000, 0) + " мм" : fmt(W) + " м";
     svg += '<rect class="pl-box" x="' + (cx - 30) + '" y="7" width="60" height="18"/><text class="svg-num" x="' + cx + '" y="20" text-anchor="middle">' + esc(lt) + "</text>";
-    svg += '<rect class="pl-box" x="305" y="' + (cy - 9) + '" width="35" height="18"/><text class="svg-num" x="322" y="' + (cy + 4) + '" text-anchor="middle">' + esc(wt) + "</text>";
+    svg += '<rect class="pl-box" x="290" y="' + (cy - 9) + '" width="50" height="18"/><text class="svg-num" x="315" y="' + (cy + 4) + '" text-anchor="middle">' + esc(wt) + "</text>";
     planEl.innerHTML = svg;
     planEl.setAttribute("aria-label", what + " " + fmt(L) + " на " + fmt(W) + " м");
     if (planLabel) planLabel.textContent = label;
@@ -488,7 +489,8 @@
         }
       });
     } else {
-      var room = storageGet(ROOM_KEY);
+      // Хаб открывается с типовыми размерами своего помещения, а не с размерами из памяти.
+      var room = isHub ? null : storageGet(ROOM_KEY);
       if (room) {
         ROOM_FIELDS.forEach(function (k) {
           if (form.elements[k] && room[k]) form.elements[k].value = room[k];
@@ -770,7 +772,7 @@
       if (startKg) rows.push(["Стартовая шпаклёвка", fmt(startKg, 1) + " кг (" + bags(startKg, bs) + ")"]);
       if (finishKg) rows.push(["Финишная шпаклёвка", fmt(finishKg, 1) + " кг (" + bags(finishKg, bf) + ")"]);
       rows.push(["Грунтовка (перед каждым слоем)", "≈ " + fmt(primer, 1) + " л"]);
-      rows.push(["Абразивная сетка", "≈ " + sandpaper + " лист."]);
+      rows.push(["Абразивная сетка", "≈ " + sandpaper + " " + plural(sandpaper, "лист", "листа", "листов")]);
 
       var warn = [];
       if (ts > 5) warn.push("Стартовую шпаклёвку наносят слоем до 5 мм за проход. При больших перепадах дешевле сначала выровнять стены штукатуркой.");
@@ -778,7 +780,7 @@
 
       return {
         big: { label: "Нужно шпаклёвки", value: fmt(total, 1), unit: "кг" },
-        sub: [startKg ? up(startKg / bs) + " меш. стартовой" : "", finishKg ? up(finishKg / bf) + " меш. финишной" : ""].filter(Boolean).join(" · "),
+        sub: [startKg ? up(startKg / bs) + " " + plural(up(startKg / bs), "мешок", "мешка", "мешков") + " стартовой" : "", finishKg ? up(finishKg / bf) + " " + plural(up(finishKg / bf), "мешок", "мешка", "мешков") + " финишной" : ""].filter(Boolean).join(" · "),
         rows: rows,
         warn: warn
       };
@@ -1079,7 +1081,10 @@
   }) : null;
 
   function update() {
-    if (saveRoom) {
+    // Размеры запоминаем только после действий пользователя: иначе значения по умолчанию
+    // (4×3 м) попадали бы в память и подставлялись в другие калькуляторы как «ваши».
+    // Хабы размеры не запоминают: у ванной и комнаты разные размеры.
+    if (saveRoom && touched && !isHub) {
       var room = {};
       ROOM_FIELDS.forEach(function (k) {
         if (form.elements[k]) room[k] = form.elements[k].value;
