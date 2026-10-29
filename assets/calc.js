@@ -49,12 +49,18 @@
     if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
     return many;
   }
+  // Целые от 1000 — с пробелами между разрядами: 1939 → «1 939», 2217,6 → «2 217,6».
+  function groupDigits(str) {
+    return String(str).replace(/(^|[^\d,])(\d{4,})/g, function (m, pre, d) {
+      return pre + d.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+    });
+  }
   function pcs(n) {
     return fmt(n, 0) + " шт.";
   }
   function bags(kg, bag) {
     var n = up(kg / bag);
-    return n + " " + plural(n, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг";
+    return fmt(n, 0) + " " + plural(n, "мешок", "мешка", "мешков") + " по " + fmt(bag) + " кг";
   }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -119,6 +125,36 @@
   function openingsArea(list) {
     return list.reduce(function (s, o) { return s + o.w * o.h * o.c; }, 0);
   }
+  // Проёмы не могут занимать всю стену — тогда считать нечего.
+  var OPENINGS_ERROR = "Площадь проёмов больше площади стен — проверьте размеры.";
+  function openingsTooBig(wallArea, ops) {
+    return wallArea > 0 && openingsArea(ops) >= wallArea - 1e-9;
+  }
+
+  /* ---------- разумные пределы ввода ---------- */
+
+  // [мин, макс (0 — без верхней границы), единица]. Пустое и нулевое поле
+  // проверяет сам калькулятор («Введите размеры…»), здесь — только выход за пределы.
+  var LIMITS = {
+    room_l: [0.1, 100, "м"], room_w: [0.1, 100, "м"], room_h: [0.1, 10, "м"], part_l: [0.1, 100, "м"],
+    area: [0.01, 10000, "м²"],
+    tile_w: [1, 0, "см"], tile_h: [1, 0, "см"], roll_l: [0.01, 0, "м"],
+    board_l: [10, 0, "мм"], board_w: [10, 0, "мм"]
+  };
+  function checkLimits() {
+    for (var name in LIMITS) {
+      var el = form.elements[name];
+      if (!el || el.closest("[hidden]")) continue;
+      var v = num(name);
+      var lim = LIMITS[name];
+      if (!v || (v >= lim[0] - 1e-9 && (!lim[1] || v <= lim[1] + 1e-9))) continue;
+      var label = (form.querySelector('label[for="' + el.id + '"]') || {}).textContent || name;
+      return "Проверьте поле «" + label + "»: " + (lim[1]
+        ? "допустимо от " + fmt(lim[0]) + " до " + fmt(lim[1]) + " " + lim[2]
+        : "значение должно быть не меньше " + fmt(lim[0]) + " " + lim[2]) + ".";
+    }
+    return "";
+  }
 
   if (addOpeningBtn) {
     addOpeningBtn.addEventListener("click", function () {
@@ -156,7 +192,7 @@
     if (r && cfg && links[cfg.main]) {
       var used = [cfg.main];
       html = "<h2>" + esc(buyEl.getAttribute("data-title") || "Купить материал") + "</h2>" +
-        '<p class="buy-lead">Нужно: ' + esc((r.big.value + " " + r.big.unit + (r.sub ? " · " + r.sub : "")).replace(/\.$/, "")) +
+        '<p class="buy-lead">Нужно: ' + esc(groupDigits(r.big.value + " " + r.big.unit + (r.sub ? " · " + r.sub : "")).replace(/\.$/, "")) +
         ". Цены и доставка — на сайте магазина.</p>";
       html += '<div class="buy-actions">' + buyLink(links[cfg.main], cfg.main, shop.button, "buy-btn");
       var extra = (cfg.extra || []).filter(function (x) { return links[x[0]]; });
@@ -197,7 +233,8 @@
       if (barSub) barSub.textContent = "";
       return false;
     }
-    var bigText = r.big.value + " " + r.big.unit;
+    var bigText = groupDigits(r.big.value + " " + r.big.unit);
+    if (r.sub) r.sub = groupDigits(r.sub);
     // Итог должен влезать в карточку одной строкой: чем длиннее текст, тем мельче шрифт.
     var n = bigText.length;
     var size = n <= 9 ? "" : n <= 11 ? " mid" : n <= 14 ? " long" : " xlong";
@@ -205,7 +242,7 @@
     if (r.sub) html += '<span class="res-sub">' + esc(r.sub) + "</span>";
     html += '</div><ul class="res-rows">';
     r.rows.forEach(function (row) {
-      html += "<li" + (row[0].indexOf("Стоимость") === 0 ? ' class="cost"' : "") + "><span>" + esc(row[0]) + "</span><b>" + esc(row[1]) + "</b></li>";
+      html += "<li" + (row[0].indexOf("Стоимость") === 0 ? ' class="cost"' : "") + "><span>" + esc(row[0]) + "</span><b>" + esc(groupDigits(row[1])) + "</b></li>";
     });
     html += "</ul>";
     (r.warn || []).forEach(function (w) {
@@ -225,7 +262,7 @@
     lastText =
       document.title.split("—")[0].trim() + "\n" +
       r.big.label + ": " + bigText + (r.sub ? " (" + r.sub + ")" : "") + "\n" +
-      r.rows.map(function (row) { return row[0] + ": " + row[1]; }).join("\n");
+      r.rows.map(function (row) { return row[0] + ": " + groupDigits(row[1]); }).join("\n");
     return true;
   }
 
@@ -431,6 +468,7 @@
       var reserve = num("reserve") / 100;
       var perPack = Math.round(num("per_pack"));
       var price = num("price");
+      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!a || !b) return { error: "Введите размер плитки." };
 
@@ -451,7 +489,7 @@
         ["Площадь облицовки", fmt(area) + " м²"],
         ["Площадь плитки к покупке", fmt(buyM2) + " м²"]
       ];
-      if (packs) rows.push(["Упаковок", packs + " упак. по " + perPack + " шт. (" + buyCount + " шт.)"]);
+      if (packs) rows.push(["Упаковок", fmt(packs, 0) + " упак. по " + fmt(perPack, 0) + " шт. (" + fmt(buyCount, 0) + " шт.)"]);
       rows.push(["Плиточный клей", "≈ " + fmt(glueKg, 0) + " кг (" + bags(glueKg, 25) + ")"]);
       if (groutKg) rows.push(["Затирка", "≈ " + fmt(groutKg, 1) + " кг (" + up(groutKg / 2) + " уп. по 2 кг)"]);
       if (crosses) rows.push(["Крестики / СВП", "≈ " + pcs(crosses)]);
@@ -463,7 +501,7 @@
 
       return {
         big: { label: "Нужно плитки", value: fmt(count, 0), unit: plural(count, "плитка", "плитки", "плиток") },
-        sub: packs ? packs + " " + plural(packs, "упаковка", "упаковки", "упаковок") + " по " + perPack + " шт." : fmt(buyM2) + " м² плитки",
+        sub: packs ? fmt(packs, 0) + " " + plural(packs, "упаковка", "упаковки", "упаковок") + " по " + fmt(perPack, 0) + " шт." : fmt(buyM2) + " м² плитки",
         rows: rows,
         warn: warn
       };
@@ -479,8 +517,8 @@
       if (!r.perimeter || !r.H) return { error: "Введите длину, ширину и высоту помещения." };
       if (!rollW || !rollL) return { error: "Введите размеры рулона." };
 
+      if (openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       var wallArea = Math.max(0, r.perimeter * r.H - openingsArea(ops));
-      if (!wallArea) return { error: "Площадь проёмов больше площади стен — проверьте размеры окон и дверей." };
       var effWidth = wallArea / r.H;
       var strips = up(effWidth / rollW);
       var stripLen = r.H + 0.1; // припуск 5 см сверху и снизу
@@ -527,6 +565,7 @@
       var can = num("can");
       var reserve = num("reserve") / 100;
       var price = num("price");
+      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!coverage) return { error: "Введите расход краски (м² на литр)." };
 
@@ -602,6 +641,7 @@
       var bag = num("bag");
       var reserve = num("reserve") / 100;
       var price = num("price");
+      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!thick) return { error: "Введите среднюю толщину слоя." };
 
@@ -645,6 +685,7 @@
       var tf = num("finish_mm"), rf = num("finish_rate");
       var bs = num("start_bag"), bf = num("finish_bag");
       var reserve = num("reserve") / 100;
+      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!(ts * rs) && !(tf * rf)) return { error: "Укажите толщину и расход хотя бы одного слоя." };
       if ((ts && !bs) || (tf && !bf)) return { error: "Укажите вес мешка." };
@@ -700,6 +741,7 @@
         guideName = "Профиль ПН 28×27";
       } else if (mode === "partition") {
         if (!partL || !r.H) return { error: "Введите длину перегородки и высоту помещения." };
+        if (openingsTooBig(partL * r.H, ops)) return { error: OPENINGS_ERROR };
         area = Math.max(0, partL * r.H - openingsArea(ops));
         sides = 2;
         members = up(partL / step) + 1;
@@ -709,6 +751,7 @@
         guideName = "Профиль ПН 50×40";
       } else {
         if (!r.perimeter || !r.H) return { error: "Введите размеры помещения." };
+        if (openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
         area = Math.max(0, r.perimeter * r.H - openingsArea(ops));
         members = 2 * (up(r.L / step) + 1) + 2 * (up(r.W / step) + 1);
         memberPieces = members * up(r.H / plen);
@@ -717,7 +760,7 @@
         mainName = "Профиль ПП 60×27";
         guideName = "Профиль ПН 28×27";
       }
-      if (!area) return { error: "Площадь проёмов больше площади обшивки — проверьте размеры." };
+      if (!area) return { error: OPENINGS_ERROR };
 
       var cladding = area * sides;
       var sheets = up(cladding * layers * (1 + reserve) / sheet);
@@ -767,6 +810,7 @@
       var perPack = Math.round(num("per_pack"));
       var reserve = num("reserve") / 100;
       var price = num("price");
+      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!total || !bl || !bw || !bt) return { error: "Заполните толщину утепления и размеры плиты." };
 
@@ -909,7 +953,7 @@
       if (!h || !k) return { error: "Выберите кирпич и толщину стены." };
 
       var area = Math.max(0, len * r.H - openingsArea(ops));
-      if (!area) return { error: "Площадь проёмов больше площади стен — проверьте размеры." };
+      if (!area) return { error: OPENINGS_ERROR };
       var DEPTH = { "0.5": 0.12, "1": 0.25, "1.5": 0.38, "2": 0.51 };
       var depth = DEPTH[String(k)] || k * 0.25;
       // На 1 м² лицевой поверхности в полкирпича: 1 / ((0,25 + шов) × (высота + шов)).
@@ -954,7 +998,8 @@
     storageSet(ROOM_KEY, Object.assign(saved, room));
 
     applyVisibility();
-    var ok = render(calculators[type]());
+    var limitError = checkLimits();
+    var ok = render(limitError ? { error: limitError } : calculators[type]());
     drawPlan();
     // Цель «расчёт выполнен» — один раз за визит и только после действий пользователя.
     if (ok && touched && !goalSent) {
