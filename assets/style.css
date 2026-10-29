@@ -252,6 +252,48 @@ main { flex: 1 0 auto; }
 .article summary { cursor: pointer; font-weight: 700; font-size: 18px; padding: 18px 0; min-height: 44px; }
 .article details p { padding-bottom: 18px; font-size: 16px; color: var(--text-2); }
 
+/* схемы (инлайн-SVG): ширина по экрану, отрисовка отложена до прокрутки */
+.scheme { margin: 4px 0; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; content-visibility: auto; contain-intrinsic-size: auto 340px; }
+.scheme svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; }
+.scheme figcaption, .scheme-sub { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.scheme-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.scheme-legend { grid-column: 1 / -1; margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.sw { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--accent); }
+.sw-cut { background: var(--on-dark); }
+.sc-t { font: 600 16px var(--font); fill: var(--ink); }
+.sc-h { font: 800 17px var(--font); fill: var(--ink); }
+.sc-light { fill: var(--muted); }
+.sc-floor { fill: var(--bg); }
+.sc-wall { fill: none; stroke: var(--ink); stroke-width: 8; stroke-linecap: square; }
+.sc-door { stroke: var(--ink); stroke-width: 3; }
+.sc-arc { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sc-bath { fill: var(--white); stroke: var(--ink); stroke-width: 2; }
+.sc-boxfill { fill: var(--line); }
+.sc-box { stroke: var(--ink); stroke-width: 2; }
+.sc-hatch { stroke: var(--muted); stroke-width: 1.5; }
+.sc-dim { fill: none; stroke: var(--ink); stroke-width: 1.2; }
+.sc-bg { fill: var(--card); }
+.sc-lead { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.sc-dot { fill: var(--accent); }
+.sc-tile { fill: var(--tint); stroke: var(--accent); stroke-width: 1; }
+.sc-cut { fill: var(--on-dark); stroke: var(--accent); stroke-width: 1; }
+.sc-room { fill: none; stroke: var(--ink); stroke-width: 3; }
+.sc-strip { fill: var(--white); stroke: var(--ink); stroke-width: 1.5; }
+.sc-motif { fill: var(--accent); }
+.sc-match { fill: none; stroke: var(--btn); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.sc-board { fill: var(--tint); stroke: var(--accent); stroke-width: 1.2; }
+.sc-accent { stroke: var(--btn); stroke-width: 3; }
+.sc-basefill { fill: var(--line); }
+.sc-base-top { stroke: var(--ink); stroke-width: 1.5; }
+.sc-layer { fill: var(--tint); stroke: var(--accent); stroke-width: 1.5; }
+.sc-level { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 8 5; }
+.sc-wallbox { fill: var(--line); stroke: var(--ink); stroke-width: 1.5; }
+.sc-tape { fill: var(--accent); }
+.sc-mortar { fill: var(--muted); opacity: .45; }
+.sc-beacon { fill: none; stroke: var(--ink); stroke-width: 3; }
+.sc-primer { fill: none; stroke: var(--accent); stroke-width: 3; }
+@media (max-width: 600px) { .scheme { padding: 12px; } .scheme-pair { gap: 10px; } .scheme-sub { font-size: 13px; } }
+
 /* полоса итога на телефоне */
 .mbar { display: none; }
 @media (max-width: 760px) {
