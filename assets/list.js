@@ -53,7 +53,8 @@
         '<button type="button" class="btn-primary" data-act="save">Сохранить в мой список</button></div>';
     }
     if (!list.length) {
-      root.innerHTML = html + '<p class="list-empty">Список пуст. Откройте <a href="index.html#calc">калькулятор</a>, посчитайте материал и нажмите «Добавить в список покупок».</p>';
+      root.innerHTML = html + '<div class="list-empty-box"><p class="list-empty"><b>Список пока пуст.</b> Посчитайте материал в любом калькуляторе и нажмите «Добавить в список покупок» — позиция появится здесь вместе с кнопкой магазина. Список можно распечатать или отправить ссылкой.</p>' +
+        '<div class="list-empty-go"><a class="btn-primary" href="remont.html">Посчитать весь ремонт</a><a class="list-btn" href="index.html#calc">Все калькуляторы</a></div></div>';
       return;
     }
     var erids = [];
