@@ -57,29 +57,30 @@
 
   /* ---------- Светлая / тёмная тема ---------- */
 
-  // Без выбора тема берётся из настройки системы; кнопка запоминает выбор (rk-theme).
-  // Атрибут data-theme ставит ещё скрипт в <head>, до отрисовки страницы.
+  // Тема — по местному времени (расписание и window.rkTheme — в скрипте в <head>, tools/build.py).
+  // Кнопка выбирает тему до ближайшей смены по расписанию. Если вкладка открыта во время смены,
+  // тема меняется сама: проверка раз в минуту и при возвращении на вкладку.
   var themeBtn = document.getElementById("theme-btn");
-  var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  function currentTheme() {
-    var t = document.documentElement.getAttribute("data-theme");
-    return t === "light" || t === "dark" ? t : (darkQuery && darkQuery.matches ? "dark" : "light");
-  }
+  var theme = window.rkTheme;
   function themeLabel() {
-    if (!themeBtn) return;
-    var dark = currentTheme() === "dark";
+    if (!themeBtn || !theme) return;
+    var dark = theme.current() === "dark";
     themeBtn.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
     themeBtn.setAttribute("title", dark ? "Светлая тема" : "Тёмная тема");
   }
-  if (themeBtn) {
+  function themeTick() {
+    theme.apply();
     themeLabel();
-    themeBtn.addEventListener("click", function () {
-      var next = currentTheme() === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
-      try { localStorage.setItem("rk-theme", next); } catch (e) { /* без хранилища — до перезагрузки */ }
-      themeLabel();
-    });
-    if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", themeLabel);
+  }
+  if (theme) {
+    themeLabel();
+    if (themeBtn) themeBtn.addEventListener("click", function () { theme.toggle(); themeLabel(); });
+    setInterval(themeTick, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) themeTick(); });
+    if (window.matchMedia) {
+      var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      if (darkQuery.addEventListener) darkQuery.addEventListener("change", themeLabel);
+    }
   }
 
   /* ---------- Уведомление о cookie ---------- */

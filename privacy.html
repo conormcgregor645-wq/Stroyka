@@ -17,9 +17,10 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Политика конфиденциальности">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#1E2226">
+<meta name="theme-color" content="#F5F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D0F11" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
-<script>try{var t=localStorage.getItem("rk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<script>(function () {var DAY = 8, NIGHT = 18, KEY = "rk-theme", COLORS = {"light": "#F5F1EA", "dark": "#0D0F11"}, root = document.documentElement;function scheduled(now) { var h = now.getHours(); return h >= DAY && h < NIGHT ? "light" : "dark"; }function nextChange(now) {var h = now.getHours(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h < DAY ? DAY : h < NIGHT ? NIGHT : DAY);if (h >= NIGHT) d.setDate(d.getDate() + 1);return d.getTime();}function manual(now) {var v = localStorage.getItem(KEY);if (v === null) return null;try { v = JSON.parse(v); } catch (e) { v = null; }if (v && (v.t === "light" || v.t === "dark") && v.until > now.getTime()) return v.t;localStorage.removeItem(KEY);return null;}function set(t) {if (root.getAttribute("data-theme") !== t) root.setAttribute("data-theme", t);var metas = document.querySelectorAll('meta[name="theme-color"]');for (var i = 0; i < metas.length; i++) metas[i].setAttribute("content", COLORS[t]);}function apply() {var now = new Date();try { set(manual(now) || scheduled(now)); } catch (e) { /* нет localStorage — тема по системе */ }}window.rkTheme = {apply: apply,current: function () {var t = root.getAttribute("data-theme");return t || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");},toggle: function () {var now = new Date(), t = this.current() === "dark" ? "light" : "dark";set(t);try {if (t === scheduled(now)) localStorage.removeItem(KEY);else localStorage.setItem(KEY, JSON.stringify({ t: t, until: nextChange(now) }));} catch (e) { /* без хранилища — до перезагрузки */ }return t;}};apply();})();</script>
 <link rel="manifest" href="site.webmanifest">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
@@ -51,7 +52,7 @@
 <li><b>Яндекс Метрика с Вебвизором.</b> Счётчик собирает обезличенную статистику посещений: какие страницы открыты, сколько времени на них проведено, откуда пришёл посетитель, тип устройства и браузера, примерный регион по IP-адресу. Вебвизор записывает действия на странице — прокрутку, клики, движения мыши, — чтобы было видно, где посетителям неудобно.</li>
 <li><b>Cookie.</b> Яндекс Метрика сохраняет в браузере cookie, чтобы отличать новые визиты от повторных.</li>
 <li><b>Ответ «Расчёт пригодился?».</b> Если вы нажмёте «Да» или «Нет» под результатом, ответ и необязательный текст из поля «Что было не так?» (до 200 символов) уходят в Яндекс Метрику вместе с названием калькулятора. Больше никуда они не отправляются. Не пишите в это поле имя, телефон и другие личные данные.</li>
-<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, выбранную светлую или тёмную тему, то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
+<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, светлую или тёмную тему, если вы выбрали её кнопкой (до ближайшей смены темы по времени суток), то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
 </ul>
 <p>Имя, телефон, адрес и другие данные, по которым вас можно узнать, сайт не спрашивает и не собирает.</p>
 <p>Шрифты сайта загружаются с самого metrazh.online, сторонние шрифтовые сервисы не используются.</p>
