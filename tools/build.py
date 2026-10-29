@@ -12,10 +12,12 @@
 затираются.
 """
 import html
+from html import escape as html_escape
 import json
 import math
 import os
 import re
+import sys
 from urllib.parse import parse_qs, urlencode, urlparse
 
 # ===== НАСТРОЙКИ =====
@@ -32,6 +34,12 @@ MITGO_VERIFY = '\n<meta name="mitgo-verification" content="5d60c4fe-cbf5-4f7c-a4
 metrika_counter = "113822395"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import schemes  # noqa: E402  схемы для страниц (инлайн-SVG)
+
+# Превью для соцсетей: assets/og/<страница>.png, 1200×630. Картинки рисует tools/og/render.cjs
+# по списку tools/og/pages.json, который пишет этот скрипт.
+OG_PAGES = []
 # Иконки сайта: assets/favicon.svg (логотип-рулетка) и assets/apple-touch-icon.png (180×180).
 ICONS_HEAD = ('<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
               '<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">')
@@ -207,10 +215,16 @@ def nav_html(fn):
 
 
 def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main="", verify="",
-         trail=(), ld_extra=(), app=True, lastmod=None):
+         trail=(), ld_extra=(), app=True, lastmod=None, og_title=None, og_icon=None):
     """trail — промежуточные крошки [(название, файл)]; ld_extra — дополнительная разметка Schema.org;
-    app — добавлять WebApplication (для калькуляторов); lastmod — дата для sitemap."""
+    app — добавлять WebApplication (для калькуляторов); lastmod — дата для sitemap;
+    og_title — заголовок на превью для соцсетей (без него берётся превью главной)."""
     canon = SITE_URL + ("" if fn == "index.html" else fn)
+    og_slug = fn[:-5] if og_title else "index"
+    if og_title:
+        OG_PAGES.append({"slug": og_slug, "title": og_title,
+                         "icon": og_icon if og_icon is not None else ICONS.get(og_slug, "")})
+    og_alt = html_escape(og_title or "Метраж — строительные калькуляторы")
 
     ld = []
     if crumb:
@@ -248,6 +262,11 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{canon}">
+<meta property="og:image" content="{SITE_URL}assets/og/{og_slug}.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{og_alt}">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1E2226">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
@@ -308,7 +327,7 @@ def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how
 {faq_html(faq)}
 </article>
 </main>'''
-    page(fn, title, desc, main, faq, crumb=h1, after_main=MBAR, lastmod=lastmod)
+    page(fn, title, desc, main, faq, crumb=h1, after_main=MBAR, lastmod=lastmod, og_title=h1)
 
 
 # ---------- главная ----------
@@ -367,7 +386,7 @@ def build_index():
     page("index.html",
          "Калькулятор ремонта — расчёт плитки, обоев, краски, штукатурки и других материалов",
          "Бесплатные строительные калькуляторы: плитка, обои, краска, ламинат, штукатурка, шпаклёвка, гипсокартон, утеплитель, стяжка и кирпич. С учётом окон, дверей и запаса.",
-         main, faq, verify=MITGO_VERIFY)
+         main, faq, verify=MITGO_VERIFY, og_title="Сколько материала нужно на ремонт?")
 
 
 # ---------- калькуляторы ----------
@@ -382,6 +401,7 @@ def build_tile():
               + grid(price("Цена, ₽ за м²"), top=True))
     how = '''<p>Площадь пола — длина × ширина. Площадь стен — периметр × высота минус площадь дверей и окон. Площадь делится на площадь одной плитки и увеличивается на запас: 10% при прямой укладке и 15% при диагональной. Результат округляется вверх до целой плитки, а затем — до целых упаковок.</p>
 <p>Затирка считается по формуле: (A + B) / (A × B) × толщина плитки × ширина шва × 1,6 кг/м², где A и B — стороны плитки в мм, 1,6 — плотность смеси. Калькулятор добавляет 10% запаса.</p>'''
+    how += schemes.bath_measure() + schemes.tile_layouts()
     norms = table(["Размер плитки", "Зубчатый шпатель", "Клей, кг/м²"],
                   [["до 20 см", "6 мм", "≈ 3,5"], ["20–40 см", "8 мм", "≈ 4,5"], ["больше 40 см", "10–12 мм", "≈ 6"]])
     calc_page("plitka.html",
@@ -408,6 +428,7 @@ def build_wallpaper():
 <li>Считаем, сколько целых полос выходит из рулона, и делим на это число количество полос с округлением вверх.</li>
 </ol>
 <p>Раппорт — расстояние, через которое повторяется рисунок. Он указан на этикетке рулона числом в сантиметрах. Значок со сдвинутыми стрелками означает подгонку со смещением, «0» или стрелка без числа — обои без подгонки.</p>'''
+    how += schemes.wallpaper_rapport()
     norms = (table(["Комната, высота 2,7 м", "Рулоны 0,53×10,05 м", "Рулоны 1,06×10,05 м"],
                    [["3×3 м (9 м²)", "7", "4"], ["3×4 м (12 м²)", "8", "4"], ["4×5 м (20 м²)", "11", "6"]])
              + "\n<p>Для обоев без подгонки рисунка, с одной дверью 0,8×2 м и одним окном 1,4×1,5 м. Обойного клея — 1 пачка на 20–30 м² стен.</p>")
@@ -456,6 +477,7 @@ def build_laminate():
               + grid(field("underlay", "Подложка в рулоне, м²", "10"), field("plinth", "Длина плинтуса, м", "2.5"), cols=2, top=True))
     how = '''<p>Площадь пола умножается на коэффициент подрезки (5–7% для прямой укладки, около 15% для диагональной) и делится на площадь одной упаковки. Результат округляется вверх до целой упаковки. Площадь в упаковке указана на торце коробки.</p>
 <p>Подложку кладут встык по всей площади, калькулятор добавляет 5% на подрезку. Длина плинтуса — периметр комнаты минус ширина дверных проёмов, тоже с 5% запаса.</p>'''
+    how += schemes.laminate_rows()
     norms = table(["Способ укладки", "Запас на подрезку"],
                   [["Прямая, прямоугольная комната", "5–7%"], ["Прямая, много углов и выступов", "10%"],
                    ["Диагональная", "15%"], ["Подложка", "+5%"], ["Плинтус", "+5% по длине"]])
@@ -595,6 +617,7 @@ def build_screed():
     how = '''<p><b>Готовая смесь:</b> масса = площадь × толщина (мм) × расход на 1 мм + запас, количество мешков — вверх до целых.</p>
 <p><b>Цемент и песок:</b> объём раствора = площадь × толщина. Сухих компонентов на 1 м³ раствора нужно 1,3 м³ — смесь уплотняется при затворении. При пропорции 1 : 3 это 0,325 м³ цемента (≈ 422 кг при насыпной плотности 1300 кг/м³) и 0,975 м³ песка. Фиброволокно — 0,9 кг на м³.</p>
 <p>Демпферную ленту клеят по периметру комнаты, армирующую сетку — по всей площади с нахлёстом.</p>'''
+    how += schemes.screed_section()
     norms = (table(["Смесь", "Расход на 1 мм", "При толщине 50 мм"],
                    [["ЦПС М150", "≈ 2 кг/м²", "≈ 100 кг/м²"], ["Пескобетон М300", "≈ 2,2 кг/м²", "≈ 110 кг/м²"],
                     ["Наливной пол", "1,5–1,8 кг/м²", "заливают до 100 мм"]])
@@ -773,7 +796,7 @@ def build_stati():
 </main>"""
     page("stati.html", "Статьи о ремонте: готовые расчёты материалов — Метраж",
          "Статьи о ремонте с готовыми расчётами: сколько плитки, обоев, краски и других материалов нужно на комнату, как измерить помещение и сколько брать запаса.",
-         main, crumb="Статьи", app=False, lastmod=ARTICLES[0][3][:10])
+         main, crumb="Статьи", app=False, lastmod=ARTICLES[0][3][:10], og_title="Статьи о ремонте")
 
 
 def build_article_tiles():
@@ -858,6 +881,7 @@ def build_article_tiles():
 <li>Отдельно запишите размеры ванны или душевого поддона, короба и ниш.</li>
 <li>Все размеры переводите в метры с точностью до сантиметра: 1 м 72 см — это 1,72 м.</li>
 </ol>
+{schemes.bath_measure()}
 
 <h2>Что вычитать: дверь, ванну и короб</h2>
 <ul>
@@ -871,6 +895,7 @@ def build_article_tiles():
 
 <h2>Сколько брать запаса</h2>
 {reserve_table}
+{schemes.tile_layouts()}
 <p>Запас нужен не только на подрезку. Плитку выпускают партиями, и у разных партий немного отличается оттенок и калибр — точный размер. Если через месяц не хватит двух плиток, той же партии в магазине может уже не быть. Поэтому всю плитку берут сразу и из одной партии: номер партии, тон и калибр указаны на коробке. После ремонта стоит оставить 2–3 целые плитки на случай замены.</p>
 
 <h2>Если стены облицовываются не до потолка</h2>
@@ -899,7 +924,8 @@ def build_article_tiles():
     page(fn, "Сколько плитки нужно на ванную: расчёт для 2×2, 2×3 и 3×3 м — Метраж",
          "Сколько плитки нужно на ванную: готовая таблица для пола и стен ванных 2×2, 2×3 и 3×3 м — штуки, упаковки, клей и затирка. Как измерить ванную и сколько брать запаса.",
          main, faq, crumb="Сколько плитки нужно на ванную", trail=[("Статьи", "stati.html")],
-         ld_extra=[article_ld], app=False, lastmod=iso[:10])
+         ld_extra=[article_ld], app=False, lastmod=iso[:10],
+         og_title="Сколько плитки нужно на ванную", og_icon=ICONS["plitka"])
     return results
 
 
@@ -951,4 +977,6 @@ if __name__ == "__main__":
     build_stati()
     build_404()
     build_seo_files()
+    with open(os.path.join(ROOT, "tools", "og", "pages.json"), "w", encoding="utf-8") as f:
+        json.dump(OG_PAGES, f, ensure_ascii=False, indent=1)
     print(f"Собрано страниц: {len(SITEMAP) + 1}, sitemap: {len(SITEMAP)} адресов, SITE_URL = {SITE_URL}")

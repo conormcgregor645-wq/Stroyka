@@ -1,0 +1,72 @@
+[
+ {
+  "slug": "index",
+  "title": "Сколько материала нужно на ремонт?",
+  "icon": ""
+ },
+ {
+  "slug": "plitka",
+  "title": "Калькулятор плитки",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"8\" height=\"8\"/><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\"/><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\"/><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" fill=\"#D9622B\"/></svg>"
+ },
+ {
+  "slug": "oboi",
+  "title": "Калькулятор обоев",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 4h11v16H5z\"/><circle cx=\"16\" cy=\"8\" r=\"4\" fill=\"#D9622B\"/><path d=\"M8 8v8M11 8v8\"/></svg>"
+ },
+ {
+  "slug": "kraska",
+  "title": "Калькулятор краски",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"15\" height=\"6\" rx=\"1\" fill=\"#D9622B\"/><path d=\"M18 6h3v5h-9v3M10 14h4v7h-4z\"/></svg>"
+ },
+ {
+  "slug": "laminat",
+  "title": "Калькулятор ламината",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\"/><path d=\"M2 9.3h20M2 14.6h20M12 4v5.3M7 9.3v5.3M17 9.3v5.3M12 14.6V20\"/><rect x=\"12\" y=\"4\" width=\"10\" height=\"5.3\" fill=\"#D9622B\"/></svg>"
+ },
+ {
+  "slug": "shtukaturka",
+  "title": "Калькулятор штукатурки",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 15l9-9 9 9z\" fill=\"#D9622B\"/><path d=\"M12 15v6\"/></svg>"
+ },
+ {
+  "slug": "shpaklevka",
+  "title": "Калькулятор шпаклёвки",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4h16v7H4z\" fill=\"#D9622B\"/><path d=\"M12 11v4M10 15h4v6h-4z\"/></svg>"
+ },
+ {
+  "slug": "gipsokarton",
+  "title": "Калькулятор гипсокартона",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"2\" width=\"16\" height=\"20\"/><circle cx=\"7\" cy=\"6\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/><circle cx=\"17\" cy=\"6\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/><circle cx=\"7\" cy=\"12\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/><circle cx=\"17\" cy=\"12\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/><circle cx=\"7\" cy=\"18\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/><circle cx=\"17\" cy=\"18\" r=\"1\" fill=\"#D9622B\" stroke=\"none\"/></svg>"
+ },
+ {
+  "slug": "uteplitel",
+  "title": "Калькулятор утеплителя",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" fill=\"#F7E2D5\"/><path d=\"M2 9c3-2 5 2 10 0s7 2 10 0M2 15c3-2 5 2 10 0s7 2 10 0\" stroke=\"#D9622B\"/></svg>"
+ },
+ {
+  "slug": "styazhka",
+  "title": "Калькулятор стяжки пола",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" aria-hidden=\"true\"><rect x=\"2\" y=\"14\" width=\"20\" height=\"6\" fill=\"#D9622B\"/><path d=\"M2 10h20M2 6h20\"/></svg>"
+ },
+ {
+  "slug": "nalivnoy-pol",
+  "title": "Калькулятор наливного пола",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"16\" width=\"20\" height=\"5\"/><path d=\"M2 16v-3h20v3\" fill=\"#D9622B\"/><path d=\"M12 2c2 2.8 3 4.3 3 5.6a3 3 0 0 1-6 0C9 6.3 10 4.8 12 2z\"/></svg>"
+ },
+ {
+  "slug": "kirpich",
+  "title": "Калькулятор кирпича",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\"/><path d=\"M2 9.3h20M2 14.6h20M9 4v5.3M16 4v5.3M5.5 9.3v5.3M12.5 9.3v5.3M19 9.3v5.3M9 14.6V20M16 14.6V20\"/><rect x=\"12.5\" y=\"9.3\" width=\"6.5\" height=\"5.3\" fill=\"#D9622B\"/></svg>"
+ },
+ {
+  "slug": "skolko-plitki-na-vannuyu",
+  "title": "Сколько плитки нужно на ванную",
+  "icon": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#1E2226\" stroke-width=\"1.6\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"8\" height=\"8\"/><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\"/><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\"/><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" fill=\"#D9622B\"/></svg>"
+ },
+ {
+  "slug": "stati",
+  "title": "Статьи о ремонте",
+  "icon": ""
+ }
+]
