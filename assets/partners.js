@@ -41,3 +41,25 @@ window.SHOP = {
     selflevel: { main: "NALIVNOY_POL", extra: [["GRUNTOVKA", "Грунтовка"]] }
   }
 };
+
+/*
+ * AM.PM — сантехника (оплата за клики, CPC). Отдельный магазин со своей маркировкой:
+ * его кнопки и строка «Реклама. …» стоят отдельно под блоком Максидома.
+ * Подписи кнопок — обязательно с названием магазина (правила CPC).
+ * pages — на каких калькуляторах показывать: [ключ ссылки, подпись].
+ */
+window.SHOP_AMPM = {
+  id: "ampm",
+  title: "Сантехника для ванной",
+  advertiser: "ООО \"ЭКСТРА МАСТЕР\"",
+  inn: "7743213001",
+  links: {
+    AMPM_SANTEHNIKA: "https://yyczo.com/c/we7urcypbvfe6c34cc86bf06c3ed2a/?erid=2bL9aMPo2e49hMef4rrTymdJeK&ulp=https%3A%2F%2Fampm-store.ru%2F",
+    AMPM_SMESITELI: "https://yyczo.com/c/we7urcypbvfe6c34cc86bf06c3ed2a/?erid=2bL9aMPo2e49hMef4rrTymdJeK&ulp=https%3A%2F%2Fampm-store.ru%2Fsmesiteli%2F",
+    AMPM_VANNY: "https://yyczo.com/c/we7urcypbvfe6c34cc86bf06c3ed2a/?erid=2bL9aMPo2e49hMef4rrTymdJeK&ulp=https%3A%2F%2Fampm-store.ru%2Fvanny%2F",
+    AMPM_MEBEL: "https://yyczo.com/c/we7urcypbvfe6c34cc86bf06c3ed2a/?erid=2bL9aMPo2e49hMef4rrTymdJeK&ulp=https%3A%2F%2Fampm-store.ru%2Fmebel-dlya-vannoy%2F"
+  },
+  pages: {
+    tile: [["AMPM_SANTEHNIKA", "Сантехника AM.PM"]]
+  }
+};

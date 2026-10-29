@@ -217,6 +217,7 @@
       // Маркировка рекламы: erid берём из каждой использованной ссылки.
       var erids = used.map(function (k) { return eridOf(links[k]); }).filter(function (e, i, all) { return e && all.indexOf(e) === i; });
       html += '<p class="ad-mark">Реклама. ' + esc(shop.advertiser) + ", ИНН " + esc(shop.inn) + ", erid: " + esc(erids.join(", ")) + "</p>";
+      html += secondShop(window.SHOP_AMPM);
     }
     // Перерисовываем только при изменении, чтобы не сбивать фокус и наведение.
     if (html !== buyKey) {
@@ -225,9 +226,19 @@
     }
   }
 
-  function buyLink(url, key, text, cls) {
+  // Другой магазин (AM.PM) — отдельной строкой под Максидомом, со своей маркировкой.
+  function secondShop(s2) {
+    var items = s2 && ((s2.pages || {})[type] || []).filter(function (x) { return s2.links[x[0]]; });
+    if (!items || !items.length) return "";
+    var erids = items.map(function (x) { return eridOf(s2.links[x[0]]); }).filter(function (e, i, all) { return e && all.indexOf(e) === i; });
+    return '<div class="buy-second"><div class="buy-extra">' +
+      items.map(function (x) { return buyLink(s2.links[x[0]], x[0], x[1], "buy-small", s2.id); }).join("") + "</div>" +
+      '<p class="ad-mark">Реклама. ' + esc(s2.advertiser) + ", ИНН " + esc(s2.inn) + ", erid: " + esc(erids.join(", ")) + "</p></div>";
+  }
+
+  function buyLink(url, key, text, cls, shopId) {
     return '<a class="' + cls + '" href="' + esc(url) + '" target="_blank" rel="sponsored nofollow noopener"' +
-      ' data-aff="' + esc(key) + '" data-shop="' + esc((window.SHOP || {}).id || "") + '">' + esc(text) + "</a>";
+      ' data-aff="' + esc(key) + '" data-shop="' + esc(shopId || (window.SHOP || {}).id || "") + '">' + esc(text) + "</a>";
   }
 
   // Главное число плавно меняется к новому значению (~200 мс), без анимации при prefers-reduced-motion.

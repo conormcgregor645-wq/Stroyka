@@ -45,6 +45,14 @@ OG_PAGES = []
 # Иконки сайта: assets/favicon.svg (логотип-рулетка) и assets/apple-touch-icon.png (180×180).
 ICONS_HEAD = ('<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
               '<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">')
+# Тема: выбранная кнопкой в шапке (localStorage rk-theme) ставится на <html> до отрисовки,
+# чтобы страница не мигала светлой. Без выбора — по настройке системы. Логика кнопки — в assets/site.js.
+THEME_INIT = ('<script>try{var t=localStorage.getItem("rk-theme");'
+              'if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>')
+THEME_BTN = ('<button type="button" class="theme-btn" id="theme-btn" aria-label="Переключить тему" title="Светлая или тёмная тема">'
+             '<svg class="ico-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'
+             '<svg class="ico-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+             '</button>')
 # Шрифты лежат в assets/fonts (@font-face — в начале assets/style.css). Заранее грузим
 # два главных начертания: текст (Manrope 400) и заголовки (Manrope 800), кириллица.
 FONTS_PRELOAD = "\n".join(f'<link rel="preload" href="assets/fonts/{f}.woff2" as="font" type="font/woff2" crossorigin>'
@@ -302,6 +310,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1E2226">
 <meta name="color-scheme" content="light dark">
+{THEME_INIT}
 <link rel="manifest" href="site.webmanifest">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
@@ -315,6 +324,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <header class="site-header"><div class="wrap header-bar">
 <a class="logo" href="index.html"><span class="logo-name">{SITE_NAME}</span>{RULER}</a>
 <a class="list-link" href="spisok.html" aria-label="Список покупок"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg><span class="list-count" id="list-count" hidden>0</span></a>
+{THEME_BTN}
 <nav class="nav" aria-label="Основное меню">{nav_html(fn)}</nav>
 </div></header>
 {main_html}{after_main}
@@ -797,33 +807,56 @@ def article_card(a):
             f'<span class="post-go">Читать →</span></a>')
 
 
-def shop_config():
-    """Партнёрские ссылки и данные рекламодателя — из того же assets/partners.js, что у калькуляторов."""
+def shop_config(name="SHOP"):
+    """Партнёрские ссылки и данные рекламодателя — из того же assets/partners.js, что у калькуляторов.
+    name — объект магазина в partners.js: SHOP (Максидом) или SHOP_AMPM (AM.PM)."""
     with open(os.path.join(ROOT, "assets", "partners.js"), encoding="utf-8") as f:
         js = f.read()
-    links = dict(re.findall(r'^\s+([A-Z_]+): "(https://[^"]+)"', js, re.M))
+    block = js[js.index(f"window.{name} = {{"):]
+    block = block[:block.index("\n};")]
+    links = dict(re.findall(r'^\s+([A-Z_]+): "(https://[^"]+)"', block, re.M))
     def get(key):
-        return re.search(r'\b' + key + r': "([^"]+)"', js).group(1)
+        m = re.search(r'\b' + key + r': ("(?:[^"\\]|\\.)*")', block)
+        return json.loads(m.group(1)) if m else ""
     return links, get("button"), get("advertiser"), get("inn"), get("id")
 
 
-def buy_static(title, lead, main, extras):
-    """Блок «Купить …» для статей: та же разметка, что строит calc.js на калькуляторах."""
+def erids_of(urls):
+    out = []
+    for u in urls:
+        e = parse_qs(urlparse(u).query).get("erid", [""])[0]
+        if e and e not in out:
+            out.append(e)
+    return out
+
+
+def aff_link(url, key, text, cls, shop_id):
+    return (f'<a class="{cls}" href="{html.escape(url)}" target="_blank" rel="sponsored nofollow noopener"'
+            f' data-aff="{key}" data-shop="{shop_id}">{text}</a>')
+
+
+def ad_mark(advertiser, inn, urls):
+    return f'<p class="ad-mark">Реклама. {html.escape(advertiser, quote=False)}, ИНН {inn}, erid: {", ".join(erids_of(urls))}</p>'
+
+
+def ampm_row(items, title=None):
+    """Строка AM.PM под блоком Максидома: свои кнопки (обводкой) и своя маркировка. items — [(ключ, подпись)]."""
+    links, _, advertiser, inn, shop_id = shop_config("SHOP_AMPM")
+    head = f'<h3 class="buy-sub">{title}</h3>' if title else ""
+    btns = "".join(aff_link(links[k], k, t, "buy-small", shop_id) for k, t in items)
+    return (f'<div class="buy-second">{head}<div class="buy-extra">{btns}</div>'
+            + ad_mark(advertiser, inn, [links[k] for k, _ in items]) + "</div>")
+
+
+def buy_static(title, lead, main, extras, second=""):
+    """Блок «Купить …» для статей: та же разметка, что строит calc.js на калькуляторах.
+    second — строка другого магазина (ampm_row) под маркировкой Максидома."""
     links, button, advertiser, inn, shop_id = shop_config()
-    def link(key, text, cls):
-        return (f'<a class="{cls}" href="{html.escape(links[key])}" target="_blank" rel="sponsored nofollow noopener"'
-                f' data-aff="{key}" data-shop="{shop_id}">{text}</a>')
-    keys = [main] + [k for k, _ in extras]
-    erids = []
-    for k in keys:
-        e = parse_qs(urlparse(links[k]).query).get("erid", [""])[0]
-        if e and e not in erids:
-            erids.append(e)
-    small = "".join(link(k, t, "buy-small") for k, t in extras)
+    small = "".join(aff_link(links[k], k, t, "buy-small", shop_id) for k, t in extras)
     return (f'<section class="buy-card"><h2>{title}</h2><p class="buy-lead">{lead}</p>'
-            f'<div class="buy-actions">{link(main, button, "buy-btn")}'
+            f'<div class="buy-actions">{aff_link(links[main], main, button, "buy-btn", shop_id)}'
             + (f'<div class="buy-extra">{small}</div>' if small else "")
-            + f'</div><p class="ad-mark">Реклама. {advertiser}, ИНН {inn}, erid: {", ".join(erids)}</p></section>')
+            + "</div>" + ad_mark(advertiser, inn, [links[main]] + [links[k] for k, _ in extras]) + second + "</section>")
 
 
 # Те же формулы, что в assets/calc.js (калькулятор плитки): округление вверх с допуском.
@@ -912,7 +945,8 @@ def build_article_tiles():
                            ["Сложная: ёлочка, модульная, крупный формат", "20%", "много подрезки и риск сколов"]])
     buy = buy_static("Купить плитку, клей и затирку",
                      "Плитку, клей и затирку можно выбрать в одном магазине — так проще собрать всё к началу работ.",
-                     "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("ZATIRKA", "Затирка")])
+                     "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("ZATIRKA", "Затирка")],
+                     ampm_row([("AMPM_SANTEHNIKA", "Сантехника AM.PM")]))
 
     main = f"""<main class="wrap calc-page article-page">
 <nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><a href="stati.html">Статьи</a><span aria-hidden="true">→</span><span>Сколько плитки нужно на ванную</span></nav>
@@ -1070,6 +1104,8 @@ def hub_bath():
         "stages": stages, "icon": ICONS["plitka"],
         "buy": ("Купить материалы для ванной", "Плитку, клей, затирку, смеси и краску можно собрать в одном магазине.",
                 "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("ZATIRKA", "Затирка"), ("OSTALNOE", "Штукатурка и стяжка"), ("KRASKA", "Краска")]),
+        # Сантехника AM.PM — отдельной строкой под Максидомом (только в хабе ванной).
+        "ampm": [("AMPM_SMESITELI", "Смесители AM.PM"), ("AMPM_VANNY", "Ванны AM.PM"), ("AMPM_MEBEL", "Мебель для ванной AM.PM")],
         "article": True,
         "faq": [("С чего начинать ремонт ванной?", "С демонтажа и сантехники: трубы и выводы под смесители разводят до выравнивания стен. Дальше по порядку — штукатурка, стяжка, гидроизоляция, плитка и потолок."),
                 ("Какой запас плитки брать на ванную?", "10% при прямой укладке и 15% при диагональной. Плитку берут сразу и из одной партии: тон и калибр у разных партий отличаются."),
@@ -1237,7 +1273,7 @@ def build_hub(h):
 </section>
 </div>
 <script type="application/json" id="hub-data">{data}</script>
-{buy_static(*h["buy"])}
+{buy_static(*h["buy"], second=ampm_row(h["ampm"], "Сантехника для ванной") if h.get("ampm") else "")}
 {AD_SLOT}
 <article class="article">
 {faq_html(h["faq"])}
@@ -1316,7 +1352,7 @@ def build_privacy():
 <li><b>Яндекс Метрика с Вебвизором.</b> Счётчик собирает обезличенную статистику посещений: какие страницы открыты, сколько времени на них проведено, откуда пришёл посетитель, тип устройства и браузера, примерный регион по IP-адресу. Вебвизор записывает действия на странице — прокрутку, клики, движения мыши, — чтобы было видно, где посетителям неудобно.</li>
 <li><b>Cookie.</b> Яндекс Метрика сохраняет в браузере cookie, чтобы отличать новые визиты от повторных.</li>
 <li><b>Ответ «Расчёт пригодился?».</b> Если вы нажмёте «Да» или «Нет» под результатом, ответ и необязательный текст из поля «Что было не так?» (до 200 символов) уходят в Яндекс Метрику вместе с названием калькулятора. Больше никуда они не отправляются. Не пишите в это поле имя, телефон и другие личные данные.</li>
-<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
+<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, выбранную светлую или тёмную тему, то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
 </ul>
 <p>Имя, телефон, адрес и другие данные, по которым вас можно узнать, сайт не спрашивает и не собирает.</p>
 <p>Шрифты сайта загружаются с самого metrazh.online, сторонние шрифтовые сервисы не используются.</p>
