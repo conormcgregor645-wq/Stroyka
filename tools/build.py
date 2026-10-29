@@ -132,8 +132,6 @@ HUB_FILES = {"remont.html", "remont-vannoy.html", "remont-kuhni.html", "remont-k
 
 # В шапке — четыре главных калькулятора, текущий (если его среди них нет) и «Все калькуляторы».
 NAV_MAIN = ["plitka.html", "oboi.html", "kraska.html", "laminat.html"]
-CHECK = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9481A" stroke-width="2.4" '
-         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>')
 RULER = ('<svg class="logo-ruler" width="104" height="10" viewBox="0 0 104 10" aria-hidden="true">'
          '<rect x="0" y="0" width="104" height="10" rx="2" fill="#D9622B"/><g stroke="#1E2226" stroke-width="1.2">'
          + "".join(f'<line x1="{x}" y1="0" x2="{x}" y2="{6 if x == 6 else 7 if x == 56 else 4}"/>' for x in range(6, 100, 10))
@@ -435,9 +433,16 @@ def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how
 
 # ---------- главная ----------
 
+def hero_svg():
+    """Иллюстрация первого экрана (assets/hero-3d-vannaya.svg) — инлайном: без лишнего запроса и мигания."""
+    with open(os.path.join(ROOT, "assets", "hero-3d-vannaya.svg"), encoding="utf-8") as f:
+        svg = f.read().strip()
+    svg = svg.replace(' xmlns="http://www.w3.org/2000/svg"', "", 1)
+    svg = re.sub(r' width="\d+" height="\d+"', ' class="hero-svg"', svg, count=1)
+    return re.sub(r">\s+<", "><", svg)
+
+
 def build_index():
-    pills = "".join(f'<span class="pill">{CHECK}{t}</span>'
-                    for t in ("Формулы как у мастеров", "Учитываем окна и двери", "Бесплатно, без регистрации"))
     cards = "".join(card(h, name, d) for h, _, name, d in CALCS)
     faq = [("Насколько точен расчёт?", "Калькуляторы используют те же формулы, что и мастера: площадь поверхности за вычетом проёмов плюс запас на подрезку. Итог округляется вверх до целых штук, рулонов, мешков и упаковок."),
            ("Почему всегда нужен запас?", "Материал режется по краям и бьётся при подрезке, а через месяц ту же партию можно уже не найти: оттенок у разных партий отличается. Поэтому закладываем 5–20% в зависимости от способа укладки."),
@@ -447,35 +452,32 @@ def build_index():
              ("02", "Введите размеры", "Длина, ширина, высота, окна и двери. Размеры запоминаются для других калькуляторов."),
              ("03", "Идите в магазин", "Штуки, упаковки и мешки, округлённые вверх. Распечатайте или отправьте ссылкой.")]
     steps_html = "".join(f'<div class="step"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></div>' for n, t, d in steps)
-    # Пример: пол 3×2 м, плитка 30×30, запас 10% → 74 плитки, по 11 шт. в упаковке → 7 упаковок.
-    demo_svg = '''<svg viewBox="0 0 340 200" role="img" aria-label="План пола 3 на 2 метра, разложенный плиткой 30 на 30 сантиметров">
-<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect class="pl-floor" width="26" height="26"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
-<rect class="pl-edge" x="40" y="30" width="260" height="156" style="fill:url(#hTiles)"/>
-<g class="pl-dim"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
-<rect x="148" y="5" width="44" height="18" class="pl-box"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
-<rect x="296" y="99" width="44" height="18" class="pl-box"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0 м</text>
-</svg>'''
+    # Карточки на иллюстрации — ванная 2×2 м из статьи: высота 2,5 м, дверь 0,7×2,0 м, запас 10%.
+    walls_n, walls_pk = tile_calc(2 * (2 + 2) * 2.5 - 0.7 * 2.0, 25, 40, per_pack=15)[:2]
+    floor_n, floor_pk = tile_calc(2 * 2, 30, 30, per_pack=11)[:2]
+    assert (walls_n, walls_pk, floor_n, floor_pk) == (205, 14, 49, 5), "цифры первого экрана разошлись со статьёй"
     main = f'''<main>
+<section class="hero">
+<div class="hero-glow" aria-hidden="true"></div>
+<div class="wrap hero-grid">
+<div class="hero-text">
+<span class="eyebrow">Расчёт материалов за минуту</span>
+<h1>Сколько плитки, обоев и&nbsp;смеси нужно на&nbsp;ваш ремонт?</h1>
+<p class="hero-lead">Введите размеры комнаты — получите штуки, упаковки и мешки с учётом окон, дверей и запаса. Бесплатно и без регистрации.</p>
+<div class="hero-actions"><a class="btn-primary hero-cta" href="remont.html">Посчитать весь ремонт</a><a class="hero-alt" href="#calc">Выбрать материал ↓</a></div>
+</div>
+<div class="hero-art">
+{hero_svg()}
+<div class="hero-card hero-card-walls"><span class="hero-card-cap">Стены · 25×40</span><span class="hero-card-big">{walls_n} плиток</span><span class="hero-card-sub">{walls_pk} упаковок по 15 шт.</span></div>
+<div class="hero-card hero-card-floor"><span class="hero-card-cap">Пол · 30×30</span><span class="hero-card-big">{floor_n} плиток</span><span class="hero-card-sub">{floor_pk} упаковок по 11 шт.</span></div>
+</div>
+</div>
+</section>
 <section class="wrap home-hero" id="calc">
-<h1>Сколько материала нужно на&nbsp;ремонт?</h1>
-<div class="pills">{pills}</div>
 <h2 class="home-sub">Ремонт под ключ <a href="remont.html">все этапы →</a></h2>
 <div class="cards hub-cards">{"".join(hub_card(h) for h in HUBS)}</div>
 <h2 class="home-sub">Калькуляторы материалов</h2>
 <div class="cards">{cards}</div>
-</section>
-<section class="wrap demo">
-<div class="demo-text">
-<span class="eyebrow">Как это выглядит</span>
-<h2>Вводите размеры и сразу видите, сколько покупать</h2>
-<p>Калькулятор рисует комнату в масштабе, раскладывает материал и округляет итог вверх до целых упаковок. Расчёт можно отправить мастеру или распечатать для магазина.</p>
-<a class="btn-primary" href="plitka.html">Попробовать на плитке</a>
-</div>
-<div class="demo-card">
-<div class="demo-head"><span class="demo-title">Пол ванной</span><span class="demo-meta">плитка 30×30</span></div>
-{demo_svg}
-<div class="demo-total"><span class="demo-big">74 плитки</span><span class="demo-sub">7 упаковок по 11 шт. · запас 10%</span></div>
-</div>
 </section>
 <section class="steps"><div class="wrap">
 <h2>Три шага до списка покупок</h2>
