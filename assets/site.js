@@ -29,6 +29,56 @@
     if (metrikaOn && typeof window.ym === "function") window.ym(Number(metrikaId), "reachGoal", name, params);
   };
 
+  function store(key, value) {
+    try {
+      if (value === undefined) return JSON.parse(localStorage.getItem(key) || "null");
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) { /* хранилище недоступно — работаем без него */ }
+    return null;
+  }
+
+  /* ---------- Список покупок (localStorage) ---------- */
+
+  var LIST_KEY = "rk-list";
+  window.rkList = {
+    get: function () { var l = store(LIST_KEY); return Array.isArray(l) ? l : []; },
+    set: function (items) { store(LIST_KEY, items.slice(0, 50)); updateBadge(); },
+    add: function (item) { var l = this.get(); l.push(item); this.set(l); return l.length; }
+  };
+  function updateBadge() {
+    var el = document.getElementById("list-count");
+    if (!el) return;
+    var n = window.rkList.get().length;
+    el.textContent = String(n);
+    el.hidden = !n;
+    el.parentNode.setAttribute("aria-label", n ? "Список покупок: " + n : "Список покупок");
+  }
+  updateBadge();
+
+  /* ---------- Уведомление о cookie ---------- */
+
+  if (!store("rk-cookie-ok")) {
+    var bar = document.createElement("div");
+    bar.className = "cookie";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", "Уведомление о cookie");
+    bar.innerHTML = '<p>Мы используем cookie и Яндекс Метрику для статистики. <a href="privacy.html">Подробнее</a></p>' +
+      '<button type="button">Понятно</button>';
+    // Не перекрываем прилипающую полосу с итогом на телефоне.
+    var mbar = document.getElementById("mbar");
+    var place = function () {
+      bar.style.bottom = (mbar && mbar.offsetHeight ? mbar.offsetHeight : 0) + 8 + "px";
+    };
+    bar.querySelector("button").addEventListener("click", function () {
+      store("rk-cookie-ok", 1);
+      bar.remove();
+      window.removeEventListener("resize", place);
+    });
+    document.body.appendChild(bar);
+    place();
+    window.addEventListener("resize", place);
+  }
+
   // Клик по партнёрской ссылке — на калькуляторах и в статьях.
   document.addEventListener("click", function (e) {
     var link = e.target.closest && e.target.closest("a[data-aff]");

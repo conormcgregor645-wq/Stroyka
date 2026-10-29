@@ -18,6 +18,8 @@
 <meta property="og:image:alt" content="Сколько материала нужно на ремонт?">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1E2226">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="site.webmanifest">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
@@ -34,6 +36,7 @@
 <body>
 <header class="site-header"><div class="wrap header-bar">
 <a class="logo" href="index.html"><span class="logo-name">Метраж</span><svg class="logo-ruler" width="104" height="10" viewBox="0 0 104 10" aria-hidden="true"><rect x="0" y="0" width="104" height="10" rx="2" fill="#D9622B"/><g stroke="#1E2226" stroke-width="1.2"><line x1="6" y1="0" x2="6" y2="6"/><line x1="16" y1="0" x2="16" y2="4"/><line x1="26" y1="0" x2="26" y2="4"/><line x1="36" y1="0" x2="36" y2="4"/><line x1="46" y1="0" x2="46" y2="4"/><line x1="56" y1="0" x2="56" y2="7"/><line x1="66" y1="0" x2="66" y2="4"/><line x1="76" y1="0" x2="76" y2="4"/><line x1="86" y1="0" x2="86" y2="4"/><line x1="96" y1="0" x2="96" y2="4"/></g></svg></a>
+<a class="list-link" href="spisok.html" aria-label="Список покупок"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg><span class="list-count" id="list-count" hidden>0</span></a>
 <nav class="nav" aria-label="Основное меню"><a href="plitka.html">Плитка</a><a href="oboi.html">Обои</a><a href="kraska.html">Краска</a><a href="laminat.html">Ламинат</a><a href="stati.html">Статьи</a><a class="nav-all" href="#calc">Все калькуляторы</a></nav>
 </div></header>
 <main>
@@ -52,11 +55,11 @@
 <div class="demo-card">
 <div class="demo-head"><span class="demo-title">Пол ванной</span><span class="demo-meta">плитка 30×30</span></div>
 <svg viewBox="0 0 340 200" role="img" aria-label="План пола 3 на 2 метра, разложенный плиткой 30 на 30 сантиметров">
-<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#F7E2D5"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
-<rect x="40" y="30" width="260" height="156" fill="url(#hTiles)" stroke="#1E2226" stroke-width="2"/>
-<g stroke="#1E2226" stroke-width="1"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
-<rect x="148" y="5" width="44" height="18" fill="#FFFDF9"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
-<rect x="303" y="99" width="30" height="18" fill="#FFFDF9"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0</text>
+<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect class="pl-floor" width="26" height="26"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
+<rect class="pl-edge" x="40" y="30" width="260" height="156" style="fill:url(#hTiles)"/>
+<g class="pl-dim"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
+<rect x="148" y="5" width="44" height="18" class="pl-box"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
+<rect x="303" y="99" width="30" height="18" class="pl-box"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0</text>
 </svg>
 <div class="demo-total"><span class="demo-big">74 плитки</span><span class="demo-sub">7 упаковок по 11 шт. · запас 10%</span></div>
 </div>
@@ -77,7 +80,7 @@
 <footer class="site-footer"><div class="wrap">
 <p class="footer-text"><strong>Метраж</strong> · metrazh.online — бесплатные строительные калькуляторы. Расчёты приблизительные, сверяйтесь с рекомендациями производителя.</p>
 <span class="footer-copy">© 2026</span>
-<nav class="footer-links" aria-label="Все калькуляторы"><a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a><a href="plitka.html">Плитка</a><a href="oboi.html">Обои</a><a href="kraska.html">Краска</a><a href="laminat.html">Ламинат</a><a href="shtukaturka.html">Штукатурка</a><a href="shpaklevka.html">Шпаклёвка</a><a href="gipsokarton.html">Гипсокартон</a><a href="uteplitel.html">Утеплитель</a><a href="styazhka.html">Стяжка</a><a href="nalivnoy-pol.html">Наливной пол</a><a href="kirpich.html">Кирпич</a></nav>
+<nav class="footer-links" aria-label="Все калькуляторы"><a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a><a href="plitka.html">Плитка</a><a href="oboi.html">Обои</a><a href="kraska.html">Краска</a><a href="laminat.html">Ламинат</a><a href="shtukaturka.html">Штукатурка</a><a href="shpaklevka.html">Шпаклёвка</a><a href="gipsokarton.html">Гипсокартон</a><a href="uteplitel.html">Утеплитель</a><a href="styazhka.html">Стяжка</a><a href="nalivnoy-pol.html">Наливной пол</a><a href="kirpich.html">Кирпич</a><a href="spisok.html">Список покупок</a><a href="o-sajte.html">О сайте</a><a href="privacy.html">Политика конфиденциальности</a></nav>
 </div></footer>
 <!-- Яндекс Метрика: код счётчика в assets/site.js, здесь — запасной вариант без JavaScript -->
 <noscript><div><img src="https://mc.yandex.ru/watch/113822395" style="position:absolute; left:-9999px;" alt=""></div></noscript>

@@ -219,14 +219,49 @@
       ' data-aff="' + esc(key) + '" data-shop="' + esc((window.SHOP || {}).id || "") + '">' + esc(text) + "</a>";
   }
 
+  // Главное число плавно меняется к новому значению (~200 мс), без анимации при prefers-reduced-motion.
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var bigRaf = 0;
+  function parseNum(v) {
+    var n = parseFloat(String(v).replace(/[\s\u00a0]/g, "").replace(",", "."));
+    return isFinite(n) ? n : null;
+  }
+  function animateBig(el, from, to, value, unit, finalText) {
+    if (reduceMotion || from === null || to === null || from === to || !window.requestAnimationFrame) return;
+    var dec = (String(value).split(",")[1] || "").length, p = Math.pow(10, dec), start = 0;
+    cancelAnimationFrame(bigRaf);
+    var step = function (t) {
+      if (!start) start = t;
+      var k = Math.min(1, (t - start) / 200);
+      var v = from + (to - from) * (1 - Math.pow(1 - k, 3));
+      el.textContent = k < 1 ? groupDigits(fmt(Math.round(v * p) / p, dec) + " " + unit) : finalText;
+      if (k < 1) bigRaf = requestAnimationFrame(step);
+    };
+    el.textContent = groupDigits(fmt(from, dec) + " " + unit);
+    bigRaf = requestAnimationFrame(step);
+  }
+
+  var lastResult = null;
+  var lastHtml = "";
+  // Карточка перерисовывается только при изменении: иначе событие change при уходе фокуса
+  // из поля подменило бы кнопку под пальцем, и нажатие «Добавить в список» или «Поделиться» терялось.
+  function setResult(html) {
+    if (html === lastHtml) return false;
+    lastHtml = html;
+    resultEl.innerHTML = html;
+    return true;
+  }
   var barBig = document.getElementById("mbar-big");
   var barSub = document.getElementById("mbar-sub");
   var lastText = "";
 
   function render(r) {
+    var prevBig = resultEl.querySelector(".res-big");
+    var prevValue = prevBig ? parseNum(prevBig.getAttribute("data-value")) : null;
     var html = '<span class="res-cap">Нужно купить</span>';
+    lastResult = r.error ? null : r;
     if (r.error) {
-      resultEl.innerHTML = html + '<p class="res-error">' + esc(r.error) + "</p>";
+      setResult(html + '<p class="res-error">' + esc(r.error) + "</p>");
       lastText = "";
       renderBuy(null);
       if (barBig) barBig.textContent = "—";
@@ -253,8 +288,9 @@
       '<div class="res-actions">' +
       '<button type="button" class="share" data-act="share">Поделиться</button>' +
       '<button type="button" class="print" data-act="print">Распечатать</button>' +
+      '<button type="button" class="add-list" data-act="list">Добавить в список покупок</button>' +
       "</div>";
-    resultEl.innerHTML = html;
+    if (setResult(html)) animateBig(resultEl.querySelector(".res-big"), prevValue, parseNum(r.big.value), r.big.value, r.big.unit, bigText);
     renderBuy(r);
     if (barBig) barBig.textContent = bigText;
     if (barSub) barSub.textContent = r.sub || "";
@@ -295,6 +331,7 @@
     var act = btn.getAttribute("data-act");
     if (act === "share") share(btn);
     if (act === "print") window.print();
+    if (act === "list") addToList(btn);
   });
 
   /* ---------- схема комнаты (SVG в масштабе) ---------- */
@@ -388,6 +425,54 @@
     planEl.setAttribute("aria-label", what + " " + fmt(L) + " на " + fmt(W) + " м");
     if (planLabel) planLabel.textContent = label;
   }
+
+  // Материал для списка покупок.
+  var MATERIAL = {
+    tile: "Плитка", wallpaper: "Обои", paint: "Краска", laminate: "Ламинат", plaster: "Штукатурка",
+    putty: "Шпаклёвка", drywall: "Гипсокартон", insulation: "Утеплитель", brick: "Кирпич", selflevel: "Наливной пол"
+  };
+  function addToList(btn) {
+    var r = lastResult;
+    if (!r || !window.rkList) return;
+    var cfg = ((window.SHOP || {}).pages || {})[type] || {};
+    var name = type === "screed" ? (val("mix") === "diy" ? "Цемент и песок для стяжки" : "Смесь для стяжки") : MATERIAL[type] || r.big.label;
+    var n = window.rkList.add({
+      name: name,
+      qty: groupDigits(r.big.value + " " + r.big.unit),
+      sub: r.sub || "",
+      calc: (document.querySelector("h1") || {}).textContent || "",
+      url: (location.pathname.split("/").pop() || "index.html") + "?" + serialize().toString(),
+      buy: cfg.main || ""
+    });
+    flash(btn, "Добавлено ✓ В списке: " + n);
+    goal("list_add", { calc: type });
+  }
+
+  /* ---------- шаблоны комнат ---------- */
+
+  function setField(name, value) {
+    var el = form.elements[name];
+    if (el) el.value = value;
+  }
+  form.addEventListener("click", function (e) {
+    var chip = e.target.closest("[data-preset]");
+    if (!chip) return;
+    var parts = chip.getAttribute("data-preset").split(",");
+    setField("area_mode", "dims");
+    setField("room_l", parts[0]);
+    setField("room_w", parts[1]);
+    setField("room_h", parts[2]);
+    var ops = (parts[3] || "").split(";").map(function (o) { return o.match(/^([dw]):([\d.]+)x([\d.]+)$/); }).filter(Boolean);
+    if (openingsEl) {
+      openingsEl.innerHTML = "";
+      ops.forEach(function (m) { addOpening(m[1], m[2], m[3], 1); });
+    }
+    var door = ops.filter(function (m) { return m[1] === "d"; })[0];
+    if (door && form.elements.door_w) { setField("door_w", door[2]); setField("doors", "1"); }
+    touched = true;
+    update();
+    goal("preset_click", { calc: type, preset: chip.textContent });
+  });
 
   /* ---------- share via URL ---------- */
 

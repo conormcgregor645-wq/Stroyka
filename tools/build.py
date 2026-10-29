@@ -26,6 +26,8 @@ from urllib.parse import parse_qs, urlencode, urlparse
 SITE_URL = "https://metrazh.online/"
 # Название сайта: шапка, подвал, og:site_name, заголовок страницы 404.
 SITE_NAME = "Метраж"
+# Контакт владельца сайта: страницы «О сайте» и «Политика конфиденциальности».
+CONTACT_EMAIL = "franceone1@mail.ru"
 # Дата для <lastmod> в sitemap.xml.
 LASTMOD = "2026-10-12"
 # Подтверждение сайта в партнёрской сети Mitgo (Admitad) — только на главной.
@@ -137,8 +139,15 @@ def h3(text):
     return f"<h3>{text}</h3>"
 
 
-ROOM3 = h3("Помещение") + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3"), field("room_h", "Высота, м", "2.7"))
-ROOM2 = h3("Помещение") + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3"), cols=2)
+# Шаблоны комнат: длина, ширина, высота, проёмы (d — дверь, w — окно: ширина × высота). Обрабатывает calc.js.
+PRESETS = [("Ванная 2×2", "2,2,2.5,d:0.7x2"), ("Санузел 1,5×1,5", "1.5,1.5,2.5,d:0.7x2"),
+           ("Кухня 3×3", "3,3,2.5,d:0.8x2;w:1.5x1.5"), ("Комната 3×4", "3,4,2.5,d:0.8x2;w:1.5x1.5"),
+           ("Комната 4×5", "4,5,2.5,d:0.8x2;w:1.5x1.5")]
+PRESET_CHIPS = ('<div class="presets" role="group" aria-label="Шаблоны комнат">'
+                + "".join(f'<button type="button" class="chip" data-preset="{v}">{t}</button>' for t, v in PRESETS) + "</div>")
+
+ROOM3 = h3("Помещение") + PRESET_CHIPS + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3"), field("room_h", "Высота, м", "2.7"))
+ROOM2 = h3("Помещение") + PRESET_CHIPS + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3"), cols=2)
 
 
 def openings(show=None, hint="Площадь проёмов вычитается из площади стен."):
@@ -244,8 +253,12 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 
     is_calc = fn in {c[0] for c in CALCS}
     scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/calc.js"></script>' if is_calc else ""
+    if fn == "spisok.html":
+        scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/list.js"></script>'
     robots_meta = f'\n<meta name="robots" content="{robots}">' if robots else ""
-    footer_links = '<a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a>' + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
+    footer_links = ('<a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a>'
+                    + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
+                    + '<a href="spisok.html">Список покупок</a><a href="o-sajte.html">О сайте</a><a href="privacy.html">Политика конфиденциальности</a>')
     host = urlparse(SITE_URL).hostname
 
     html = f'''<!doctype html>
@@ -268,6 +281,8 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <meta property="og:image:alt" content="{og_alt}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1E2226">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="site.webmanifest">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
@@ -281,6 +296,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <body>
 <header class="site-header"><div class="wrap header-bar">
 <a class="logo" href="index.html"><span class="logo-name">{SITE_NAME}</span>{RULER}</a>
+<a class="list-link" href="spisok.html" aria-label="Список покупок"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg><span class="list-count" id="list-count" hidden>0</span></a>
 <nav class="nav" aria-label="Основное меню">{nav_html(fn)}</nav>
 </div></header>
 {main_html}{after_main}
@@ -290,8 +306,8 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <nav class="footer-links" aria-label="Все калькуляторы">{footer_links}</nav>
 </div></footer>
 <!-- Яндекс Метрика: код счётчика в assets/site.js, здесь — запасной вариант без JavaScript -->
-<noscript><div><img src="https://mc.yandex.ru/watch/{metrika_counter}" style="position:absolute; left:-9999px;" alt=""></div></noscript>{scripts}
-<script src="assets/site.js"></script>
+<noscript><div><img src="https://mc.yandex.ru/watch/{metrika_counter}" style="position:absolute; left:-9999px;" alt=""></div></noscript>
+<script src="assets/site.js"></script>{scripts}
 </body>
 </html>
 '''
@@ -346,11 +362,11 @@ def build_index():
     steps_html = "".join(f'<div class="step"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></div>' for n, t, d in steps)
     # Пример: пол 3×2 м, плитка 30×30, запас 10% → 74 плитки, по 11 шт. в упаковке → 7 упаковок.
     demo_svg = '''<svg viewBox="0 0 340 200" role="img" aria-label="План пола 3 на 2 метра, разложенный плиткой 30 на 30 сантиметров">
-<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#F7E2D5"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
-<rect x="40" y="30" width="260" height="156" fill="url(#hTiles)" stroke="#1E2226" stroke-width="2"/>
-<g stroke="#1E2226" stroke-width="1"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
-<rect x="148" y="5" width="44" height="18" fill="#FFFDF9"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
-<rect x="303" y="99" width="30" height="18" fill="#FFFDF9"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0</text>
+<defs><pattern id="hTiles" x="40" y="30" width="26" height="26" patternUnits="userSpaceOnUse"><rect class="pl-floor" width="26" height="26"/><path d="M26 0V26H0" fill="none" stroke="#D9622B" stroke-width="1"/></pattern></defs>
+<rect class="pl-edge" x="40" y="30" width="260" height="156" style="fill:url(#hTiles)"/>
+<g class="pl-dim"><line x1="40" y1="14" x2="300" y2="14"/><line x1="40" y1="9" x2="40" y2="19"/><line x1="300" y1="9" x2="300" y2="19"/><line x1="316" y1="30" x2="316" y2="186"/><line x1="311" y1="30" x2="321" y2="30"/><line x1="311" y1="186" x2="321" y2="186"/></g>
+<rect x="148" y="5" width="44" height="18" class="pl-box"/><text x="170" y="18" text-anchor="middle" class="svg-num">3,0 м</text>
+<rect x="303" y="99" width="30" height="18" class="pl-box"/><text x="318" y="112" text-anchor="middle" class="svg-num">2,0</text>
 </svg>'''
     main = f'''<main>
 <section class="wrap home-hero" id="calc">
@@ -638,6 +654,7 @@ def build_screed():
 
 def build_selflevel():
     inputs = (h3("Площадь") + seg("area_mode", [("dims", "По размерам комнаты"), ("area", "Ввести площадь")], "dims")
+              + '<div class="presets-gap"></div>' + PRESET_CHIPS
               + grid(field("room_l", "Длина, м", "4", show="area_mode:dims"), field("room_w", "Ширина, м", "3", show="area_mode:dims"),
                      field("area", "Площадь, м²", "12", show="area_mode:area"), top=True)
               + h3("Толщина слоя") + grid(field("min_mm", "В самом тонком месте, мм", "10"), field("max_mm", "В самом толстом месте, мм", "10"))
@@ -687,7 +704,7 @@ def build_brick():
     bricks = [("65", "Одинарный 250×120×65"), ("88", "Полуторный 250×120×88"), ("138", "Двойной 250×120×138")]
     walls = [("0.5", "В полкирпича (120 мм)"), ("1", "В кирпич (250 мм)"), ("1.5", "В 1,5 кирпича (380 мм)"), ("2", "В 2 кирпича (510 мм)")]
     inputs = (h3("Что кладём") + seg("mode", [("perimeter", "Стены по периметру"), ("one", "Одна стена")], "perimeter")
-              + h3("Размеры") + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3", show="mode:perimeter"),
+              + h3("Размеры") + PRESET_CHIPS + grid(field("room_l", "Длина, м", "4"), field("room_w", "Ширина, м", "3", show="mode:perimeter"),
                                      field("room_h", "Высота, м", "2.7"))
               + openings()
               + h3("Кирпич и кладка") + grid(select("brick", "Кирпич", bricks, "65"), select("wall", "Толщина стены", walls, "1"),
@@ -930,6 +947,84 @@ def build_article_tiles():
     return results
 
 
+# ---------- служебные страницы ----------
+
+def mail_link():
+    return f'<a href="mailto:{CONTACT_EMAIL}">{CONTACT_EMAIL}</a>' if "@" in CONTACT_EMAIL else CONTACT_EMAIL
+
+
+def text_page(fn, title, desc, h1, crumb, body, robots=None, in_sitemap=True, og_title=None):
+    main = f"""<main class="wrap calc-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>{crumb}</span></nav>
+<article class="article post">
+<header class="post-head"><h1>{h1}</h1></header>
+{body}
+</article>
+</main>"""
+    page(fn, title, desc, main, crumb=crumb, app=False, robots=robots, in_sitemap=in_sitemap,
+         lastmod="2026-10-29", og_title=og_title)
+
+
+def build_privacy():
+    body = f"""<p class="note">Это шаблон политики конфиденциальности. Владельцу сайта стоит сверить его с юристом и с требованиями закона о персональных данных (152-ФЗ).</p>
+<p class="post-meta">Редакция от 29 октября 2026</p>
+<h2>Кто отвечает за данные</h2>
+<p>Оператор — владелец сайта metrazh.online. По любым вопросам о данных пишите на {mail_link()}.</p>
+<h2>Какие данные собираются</h2>
+<ul>
+<li><b>Яндекс Метрика с Вебвизором.</b> Счётчик собирает обезличенную статистику посещений: какие страницы открыты, сколько времени на них проведено, откуда пришёл посетитель, тип устройства и браузера, примерный регион по IP-адресу. Вебвизор записывает действия на странице — прокрутку, клики, движения мыши, — чтобы было видно, где посетителям неудобно.</li>
+<li><b>Cookie.</b> Яндекс Метрика сохраняет в браузере cookie, чтобы отличать новые визиты от повторных.</li>
+<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок и то, что вы закрыли уведомление о cookie. Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
+</ul>
+<p>Имя, телефон, адрес и другие данные, по которым вас можно узнать, сайт не спрашивает и не собирает.</p>
+<h2>Зачем</h2>
+<p>Статистика нужна, чтобы понимать, какими калькуляторами пользуются, где в них ошибаются, и улучшать сайт. Метрика также отмечает выполненные расчёты и переходы по ссылкам в магазин.</p>
+<h2>Кому передаются данные</h2>
+<p>Данные не продаются и не передаются третьим лицам для их собственных целей. Статистику обрабатывает сервис Яндекс Метрика по своим <a href="https://yandex.ru/legal/metrica_termsofuse/" rel="nofollow">условиям использования</a>. Если вы переходите в магазин по партнёрской ссылке, магазин и партнёрская сеть получают сведения о переходе по своим правилам.</p>
+<h2>Как отключить cookie и статистику</h2>
+<ul>
+<li>Запретите cookie для сайта в настройках браузера или откройте сайт в режиме инкогнито.</li>
+<li>Установите <a href="https://yandex.ru/support/metrica/general/opt-out.html" rel="nofollow">блокировщик Яндекс Метрики</a> — расширение для браузера от Яндекса.</li>
+<li>Чтобы удалить размеры комнаты и список покупок, очистите данные сайта metrazh.online в настройках браузера.</li>
+</ul>
+<p>Калькуляторы продолжат работать и без cookie.</p>
+<h2>Запросы и вопросы</h2>
+<p>Чтобы задать вопрос о ваших данных или попросить их удалить, напишите на {mail_link()}.</p>"""
+    text_page("privacy.html", "Политика конфиденциальности — Метраж",
+              "Какие данные собирает сайт «Метраж»: Яндекс Метрика, cookie и данные в браузере. Зачем они нужны и как отключить cookie.",
+              "Политика конфиденциальности", "Политика конфиденциальности", body, og_title="Политика конфиденциальности")
+
+
+def build_about():
+    body = f"""<p class="post-lead">«Метраж» — бесплатные строительные калькуляторы: сколько плитки, обоев, краски, смеси или кирпича нужно на комнату, чтобы купить материал один раз и без большого остатка.</p>
+<h2>Зачем сделан сайт</h2>
+<p>Перед ремонтом почти всегда приходится считать материалы вручную — и легко ошибиться: забыть вычесть дверь, не учесть запас на подрезку или округлить вниз. Калькуляторы делают этот расчёт за вас, показывают формулу и подсказывают, сколько упаковок или мешков брать.</p>
+<h2>Как считаются результаты</h2>
+<ul>
+<li>Площадь — по размерам комнаты, окна и двери вычитаются.</li>
+<li>Расход — по нормам из инструкций производителей и строительной практике. На каждой странице в разделе «Как считается» есть формула и таблица норм.</li>
+<li>К результату добавляется запас на подрезку и бой, итог округляется вверх до целых штук, упаковок и мешков.</li>
+</ul>
+<h2>Расчёты ориентировочные</h2>
+<p>Точный расход зависит от конкретной марки материала, ровности основания и способа укладки. Перед покупкой сверьтесь с рекомендациями на упаковке — там, где это возможно, введите расход производителя в калькулятор.</p>
+<h2>Реклама и партнёрские ссылки</h2>
+<p>В блоке «Купить» под калькуляторами стоят партнёрские ссылки на магазин. Если вы купите материал по такой ссылке, сайт получит небольшую комиссию — цена для вас не меняется. Такие блоки помечены как реклама: в маркировке указаны рекламодатель, его ИНН и идентификатор рекламы (erid).</p>
+<h2>Данные</h2>
+<p>Сайт ведёт обезличенную статистику через Яндекс Метрику, а размеры комнаты и список покупок хранит только в вашем браузере. Подробнее — в <a href="privacy.html">политике конфиденциальности</a>.</p>
+<h2>Контакты</h2>
+<p>Нашли ошибку в расчёте или хотите предложить калькулятор — пишите на {mail_link()}.</p>"""
+    text_page("o-sajte.html", "О сайте «Метраж» — как работают строительные калькуляторы",
+              "Зачем сделан сайт «Метраж», как считаются результаты калькуляторов, почему расчёты ориентировочные, партнёрские ссылки и контакты.",
+              "О сайте «Метраж»", "О сайте", body, og_title="О сайте «Метраж»")
+
+
+def build_list_page():
+    body = """<p class="page-lead">Сюда попадают расчёты, которые вы добавили кнопкой «Добавить в список покупок». Список хранится только в этом браузере.</p>
+<div id="list-root" class="list-root"><noscript><p>Для списка покупок нужен JavaScript.</p></noscript></div>"""
+    text_page("spisok.html", "Список покупок — Метраж", "Ваш список материалов для ремонта из калькуляторов «Метража».",
+              "Список покупок", "Список покупок", body, robots="noindex", in_sitemap=False)
+
+
 def build_404():
     cards = "".join(card(h, name, d) for h, _, name, d in CALCS)
     main = f'''<main class="wrap home-hero">
@@ -976,6 +1071,9 @@ if __name__ == "__main__":
     build_brick()
     build_article_tiles()
     build_stati()
+    build_privacy()
+    build_about()
+    build_list_page()
     build_404()
     build_seo_files()
     with open(os.path.join(ROOT, "tools", "og", "pages.json"), "w", encoding="utf-8") as f:
