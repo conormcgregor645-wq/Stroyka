@@ -154,7 +154,7 @@ main { flex: 1 0 auto; }
 .nav a[aria-current="page"] { background: var(--btn); color: var(--white); font-weight: 700; }
 .nav a.nav-all { background: var(--on-surface); color: var(--surface-dark); font-weight: 700; padding: 0 16px; }
 .nav a.nav-all:hover { background: var(--white); color: var(--surface-dark); }
-@media (max-width: 1100px) {
+@media (max-width: 1120px) {
   .nav { width: 100%; }
 }
 
@@ -166,7 +166,7 @@ main { flex: 1 0 auto; }
 .list-link:hover { background: rgba(245, 241, 234, .1); color: var(--on-surface); }
 .list-count { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
   background: var(--btn); color: var(--white); font: 700 12px/20px var(--mono); text-align: center; }
-@media (max-width: 1100px) { .list-link { order: 2; margin-left: auto; } .header-bar .nav { order: 3; margin-left: 0; } }
+@media (max-width: 1120px) { .list-link { order: 2; margin-left: auto; } .header-bar .nav { order: 3; margin-left: 0; } }
 
 /* уведомление о cookie: над полосой итога (отступ снизу задаёт site.js) */
 .cookie { position: fixed; left: 16px; right: 16px; bottom: 8px; z-index: 20; max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px;
