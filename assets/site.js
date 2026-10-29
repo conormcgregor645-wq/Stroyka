@@ -58,29 +58,10 @@
   /* ---------- Светлая / тёмная тема ---------- */
 
   // Тема — по местному времени (расписание и window.rkTheme — в скрипте в <head>, tools/build.py).
-  // Кнопка выбирает тему до ближайшей смены по расписанию. Если вкладка открыта во время смены,
-  // тема меняется сама: проверка раз в минуту и при возвращении на вкладку.
-  var themeBtn = document.getElementById("theme-btn");
-  var theme = window.rkTheme;
-  function themeLabel() {
-    if (!themeBtn || !theme) return;
-    var dark = theme.current() === "dark";
-    themeBtn.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
-    themeBtn.setAttribute("title", dark ? "Светлая тема" : "Тёмная тема");
-  }
-  function themeTick() {
-    theme.apply();
-    themeLabel();
-  }
-  if (theme) {
-    themeLabel();
-    if (themeBtn) themeBtn.addEventListener("click", function () { theme.toggle(); themeLabel(); });
-    setInterval(themeTick, 60000);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) themeTick(); });
-    if (window.matchMedia) {
-      var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      if (darkQuery.addEventListener) darkQuery.addEventListener("change", themeLabel);
-    }
+  // Если вкладка открыта во время смены, тема меняется сама: проверка раз в минуту и при возвращении на вкладку.
+  if (window.rkTheme) {
+    setInterval(window.rkTheme.apply, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) window.rkTheme.apply(); });
   }
 
   /* ---------- Уведомление о cookie ---------- */
