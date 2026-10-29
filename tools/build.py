@@ -45,6 +45,10 @@ OG_PAGES = []
 # Иконки сайта: assets/favicon.svg (логотип-рулетка) и assets/apple-touch-icon.png (180×180).
 ICONS_HEAD = ('<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
               '<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">')
+# Шрифты лежат в assets/fonts (@font-face — в начале assets/style.css). Заранее грузим
+# два главных начертания: текст (Manrope 400) и заголовки (Manrope 800), кириллица.
+FONTS_PRELOAD = "\n".join(f'<link rel="preload" href="assets/fonts/{f}.woff2" as="font" type="font/woff2" crossorigin>'
+                          for f in ("manrope-cyrillic-400", "manrope-cyrillic-800"))
 
 # Иконки материалов (линейные SVG из макета).
 _SVG = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E2226" stroke-width="1.6"{extra} aria-hidden="true">{body}</svg>'
@@ -83,6 +87,8 @@ ARTICLES = [
      "2026-10-29T13:20:00+03:00", "29 октября 2026"),
 ]
 ARTICLE_FILES = {a[0] for a in ARTICLES} | {"stati.html"}
+# Хабы «Ремонт под ключ» и их общий список — пункт меню «Ремонт под ключ».
+HUB_FILES = {"remont.html", "remont-vannoy.html", "remont-kuhni.html", "remont-komnaty.html"}
 
 # В шапке — четыре главных калькулятора, текущий (если его среди них нет) и «Все калькуляторы».
 NAV_MAIN = ["plitka.html", "oboi.html", "kraska.html", "laminat.html"]
@@ -218,11 +224,12 @@ def nav_html(fn):
     links = "".join(f'<a href="{h}"{" aria-current=\"page\"" if h == fn else ""}>{labels[h]}</a>' for h in files)
     all_href = "#calc" if fn == "index.html" else "index.html#calc"
     articles = f'<a href="stati.html"{" aria-current=\"page\"" if fn in ARTICLE_FILES else ""}>Статьи</a>'
-    return links + articles + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
+    remont = f'<a href="remont.html"{" aria-current=\"page\"" if fn in HUB_FILES else ""}>Ремонт под ключ</a>'
+    return remont + links + articles + f'<a class="nav-all" href="{all_href}">Все калькуляторы</a>'
 
 
 def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitemap=True, after_main="", verify="",
-         trail=(), ld_extra=(), app=True, lastmod=None, og_title=None, og_icon=None):
+         trail=(), ld_extra=(), app=True, lastmod=None, og_title=None, og_icon=None, scripts=None):
     """trail — промежуточные крошки [(название, файл)]; ld_extra — дополнительная разметка Schema.org;
     app — добавлять WebApplication (для калькуляторов); lastmod — дата для sitemap;
     og_title — заголовок на превью для соцсетей (без него берётся превью главной)."""
@@ -250,11 +257,12 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
     ldhtml = "".join(f'\n<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
 
     is_calc = fn in {c[0] for c in CALCS}
-    scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/calc.js"></script>' if is_calc else ""
+    if scripts is None:
+        scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/calc.js"></script>' if is_calc else ""
     if fn == "spisok.html":
         scripts = '\n<script src="assets/partners.js"></script>\n<script src="assets/list.js"></script>'
     robots_meta = f'\n<meta name="robots" content="{robots}">' if robots else ""
-    footer_links = ('<a href="index.html">Все калькуляторы</a><a href="stati.html">Статьи</a>'
+    footer_links = ('<a href="index.html">Все калькуляторы</a><a href="remont.html">Ремонт под ключ</a><a href="stati.html">Статьи</a>'
                     + "".join(f'<a href="{h}">{t}</a>' for h, t, *_ in CALCS)
                     + '<a href="spisok.html">Список покупок</a><a href="o-sajte.html">О сайте</a><a href="privacy.html">Политика конфиденциальности</a>')
     host = urlparse(SITE_URL).hostname
@@ -286,9 +294,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <!-- Подтверждение прав в Google Search Console: раскомментируйте и вставьте код -->
 <!-- <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE"> -->{verify}
 {ICONS_HEAD}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap">
+{FONTS_PRELOAD}
 <link rel="stylesheet" href="assets/style.css">{ldhtml}
 </head>
 <body>
@@ -324,12 +330,42 @@ MBAR = '''
 </div>'''
 
 
+# Значения полей калькуляторов по умолчанию и их страницы — для хабов «Ремонт под ключ»:
+# хаб считает этапы теми же формулами (assets/calc.js) с теми же значениями, что и калькулятор.
+CALC_DEFAULTS = {}
+CALC_PAGES = {}
+CALC_OPENINGS = set()   # калькуляторы с блоком «Двери и окна»
+
+
+def form_defaults(inputs):
+    values = {}
+    for name, value in re.findall(r'<input id="f-[^"]+" name="([^"]+)" type="[^"]+"[^>]*? value="([^"]*)"', inputs):
+        values[name] = value
+    for name, value in re.findall(r'<input type="radio" id="[^"]+" name="([^"]+)" value="([^"]*)" checked>', inputs):
+        values[name] = value
+    for name, opts in re.findall(r'<select id="f-[^"]+" name="([^"]+)">(.*?)</select>', inputs):
+        m = re.search(r'<option value="([^"]*)" selected>', opts) or re.search(r'<option value="([^"]*)"', opts)
+        values[name] = m.group(1)
+    return values
+
+
+# Ссылки «Весь ремонт …» с калькуляторов на хабы.
+HUB_LINKS = {"plitka.html": ("remont-vannoy.html", "Весь ремонт ванной"),
+             "styazhka.html": ("remont-vannoy.html", "Весь ремонт ванной")}
+
+
 def calc_page(fn, title, desc, h1, calc_type, buy_title, plan_title, inputs, how, norms, faq, related=""):
     """Страница калькулятора: форма и результат, схема, покупка, реклама, «Как считается», нормы, FAQ."""
+    CALC_DEFAULTS[calc_type] = form_defaults(inputs)
+    CALC_PAGES[calc_type] = fn
+    if 'id="openings"' in inputs:
+        CALC_OPENINGS.add(calc_type)
+    hub = HUB_LINKS.get(fn)
+    hub_html = f'\n<p class="hub-link"><a href="{hub[0]}">{hub[1]} →</a></p>' if hub else ""
     main = f'''<main class="wrap calc-page">
 <nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>{h1}</span></nav>
 <div class="calc-head"><h1>{h1}</h1><span class="calc-tagline">Формулы как у мастеров · Без регистрации</span></div>
-{calc_form(calc_type, inputs, plan_title)}
+{calc_form(calc_type, inputs, plan_title)}{hub_html}
 <section class="buy-card" id="buy" data-title="{buy_title}"></section>
 {AD_SLOT}
 <article class="article">
@@ -370,6 +406,9 @@ def build_index():
 <section class="wrap home-hero" id="calc">
 <h1>Сколько материала нужно на&nbsp;ремонт?</h1>
 <div class="pills">{pills}</div>
+<h2 class="home-sub">Ремонт под ключ <a href="remont.html">все этапы →</a></h2>
+<div class="cards hub-cards">{"".join(hub_card(h) for h in HUBS)}</div>
+<h2 class="home-sub">Калькуляторы материалов</h2>
 <div class="cards">{cards}</div>
 </section>
 <section class="wrap demo">
@@ -592,15 +631,16 @@ def build_drywall():
 
 
 def build_insulation():
-    inputs = (h3("Что утепляем") + seg("surface", [("walls", "Стены"), ("floor", "Пол или перекрытие")], "walls")
-              + ROOM3 + openings("surface:walls")
+    inputs = (h3("Что утепляем") + seg("surface", [("walls", "Стены"), ("one", "Одна стена"), ("floor", "Пол или перекрытие")], "walls")
+              + ROOM3 + openings("surface:walls,one")
               + h3("Утеплитель") + grid(select("total_mm", "Толщина утепления", [("50", "50 мм"), ("100", "100 мм"), ("150", "150 мм"), ("200", "200 мм")], "100"),
                                         field("board_t", "Толщина плиты, мм", "50"), field("per_pack", "Плит в упаковке", "8", "number", ' min="0" step="1"'))
               + grid(field("board_l", "Длина плиты, мм", "1200"), field("board_w", "Ширина плиты, мм", "600"),
                      price("Цена упаковки, ₽"), top=True)
               + reserve([("3", "минимум"), ("5", "рекомендуем"), ("10", "сложная форма")], "5"))
     how = '''<p>Число слоёв = требуемая толщина ÷ толщина плиты (вверх). Плиты = площадь × слои + запас, делённые на площадь одной плиты, с округлением вверх. Затем плиты пересчитываются в упаковки.</p>
-<p>Пароизоляцию кладут с нахлёстом 10 см — плюс 10% к площади. Для стен добавляем тарельчатые дюбели — около 6 штук на м².</p>'''
+<p>Пароизоляцию кладут с нахлёстом 10 см — плюс 10% к площади. Для стен добавляем тарельчатые дюбели — около 6 штук на м².</p>
+<p>Режим «Одна стена» — для наружной стены комнаты: площадь равна длине × высоте минус её окна и двери. Длину стены введите в поле «Длина».</p>'''
     norms = table(["Материал", "Типовая плита", "В упаковке"],
                   [["Минвата (плиты)", "1200×600×50 мм", "8–12 шт. (5,76–8,64 м²)"], ["Минвата (плиты)", "1200×600×100 мм", "4–6 шт."],
                    ["Пенополистирол", "1000×1000×50 мм", "10–12 шт."], ["Экструдированный пенополистирол", "1200×600×50 мм", "8 шт."],
@@ -889,6 +929,282 @@ def build_article_tiles():
     return results
 
 
+# ---------- хабы «Ремонт под ключ» ----------
+
+# Этап: id, заголовок, что делается, какой материал, позиции. Позиция (item):
+#   calc  — калькулятор (тип из assets/calc.js), его значения по умолчанию берутся из CALC_DEFAULTS;
+#   set   — что поменять относительно значений по умолчанию;
+#   room  — "room" (размеры комнаты), "apron" (фартук: длина × высота) или "ext" (наружная стена);
+#   ops   — проёмы: "all", "w" (только окна) или "none" (как в калькуляторе, где блок проёмов скрыт);
+#   doors — подставить число и ширину дверей из проёмов (ламинат: плинтус и порожки);
+#   row   — показать строку результата вместо главного числа; rows — дополнительные строки;
+#   name  — название в списке покупок; buy — ключ партнёрской ссылки из assets/partners.js.
+# when — этап показывается только при значении переключателя хаба, например {"finish": "paint"}.
+def stage(sid, title, what, material, items, when=None):
+    return {"id": sid, "title": title, "what": what, "material": material, "items": items, "when": when}
+
+
+def item(calc, name, buy="", set=None, room="room", ops="all", doors=False, row=None, rows=()):
+    return {"calc": calc, "name": name, "buy": buy, "set": set or {}, "room": room, "ops": ops,
+            "doors": doors, "row": row, "rows": list(rows)}
+
+
+TILE_GLUE = [item("tile", "Плиточный клей", "KLEY_PLITOCHNY", row="Плиточный клей"),
+             item("tile", "Затирка", "ZATIRKA", row="Затирка")]
+
+
+def glue_for(set, room="room", ops="all"):
+    return [dict(i, set=set, room=room, ops=ops) for i in TILE_GLUE]
+
+
+def hub_bath():
+    tile_both = {"surface": "both"}
+    stages = [
+        stage("walls", "Выравнивание стен",
+              "Стены выводят в плоскость по маякам: под плитку перепад не должен превышать 2 мм на 2 м. Перед штукатуркой стены грунтуют.",
+              "штукатурка (в расчёте — гипсовая, средний слой 15 мм, мешки по 30 кг), маяки 3 м, грунтовка.",
+              [item("plaster", "Штукатурка", "OSTALNOE", rows=["Маяки 3 м", "Грунтовка"])]),
+        stage("screed", "Стяжка пола",
+              "Пол выравнивают стяжкой по маякам, по периметру клеят демпферную ленту. Плитку кладут после полного высыхания стяжки.",
+              "сухая смесь ЦПС М150, средняя толщина 50 мм, мешки по 40 кг; демпферная лента.",
+              [item("screed", "Смесь для стяжки", "OSTALNOE", rows=["Демпферная лента"])]),
+    ]
+    if "selflevel" in CALC_DEFAULTS:
+        stages.append(stage("selflevel", "Наливной пол",
+                            "Тонкий слой наливного пола доводит стяжку до идеально ровной поверхности под плитку. Основание грунтуют, по периметру — демпферная лента.",
+                            "финишная смесь наливного пола, слой 10 мм, мешки по 25 кг; грунтовка.",
+                            [item("selflevel", "Наливной пол", "NALIVNOY_POL", rows=["Грунтовка"])]))
+    stages += [
+        stage("tile", "Плитка на стены и пол",
+              "Сначала облицовывают стены — от второго ряда снизу вверх, затем пол и нижний ряд стен. Запас 10% уходит на подрезку и бой.",
+              "плитка 30×60 см по 8 шт. в упаковке, запас 10%. Размер и фасовку своей плитки поменяйте в калькуляторе.",
+              [item("tile", "Плитка", "PLITKA", set=tile_both, rows=["Площадь облицовки"])]),
+        stage("glue", "Клей и затирка",
+              "Клей наносят зубчатым шпателем, швы держат крестиками или СВП. Затирают швы через сутки, когда клей схватится.",
+              "плиточный клей в мешках по 25 кг, затирка в упаковках по 2 кг, крестики или СВП.",
+              glue_for(tile_both) + [item("tile", "Крестики / СВП", set=tile_both, row="Крестики / СВП")]),
+        stage("ceiling", "Покраска потолка",
+              "Потолок грунтуют и красят в два слоя влагостойкой краской — в ванной лучше латексной или акриловой с пометкой «для влажных помещений».",
+              "краска (расход 9 м²/л на слой, два слоя, тара 9 л), грунтовка.",
+              [item("paint", "Краска для потолка", "KRASKA", set={"surface": "ceiling"}, ops="none", rows=["Грунтовка (1 слой)"])]),
+    ]
+    return {
+        "fn": "remont-vannoy.html", "type": "hub-bath", "short": "Ремонт ванной", "crumb": "Ремонт ванной",
+        "h1": "Ремонт ванной: расчёт материалов",
+        "title": "Ремонт ванной: расчёт материалов по этапам — Метраж",
+        "desc": "Ремонт ванной под ключ: сколько штукатурки, смеси для стяжки, плитки, клея, затирки и краски нужно на ванную по вашим размерам. Все этапы на одной странице.",
+        "lead": "Введите размеры ванной — и получите материалы на весь ремонт: от выравнивания стен до покраски потолка. Каждый этап считается тем же калькулятором, что на отдельной странице, с его значениями по умолчанию.",
+        "card": "Штукатурка, стяжка, плитка, клей, потолок",
+        "card_long": "Выравнивание стен, стяжка пола, плитка на стены и пол, клей и затирка, покраска потолка.",
+        "room": ("2", "2", "2.5"), "openings": "d:0.7x2", "toggles": "",
+        "stages": stages, "icon": ICONS["plitka"],
+        "buy": ("Купить материалы для ванной", "Плитку, клей, затирку, смеси и краску можно собрать в одном магазине.",
+                "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("ZATIRKA", "Затирка"), ("OSTALNOE", "Штукатурка и стяжка"), ("KRASKA", "Краска")]),
+        "article": True,
+        "faq": [("С чего начинать ремонт ванной?", "С демонтажа и сантехники: трубы и выводы под смесители разводят до выравнивания стен. Дальше по порядку — штукатурка, стяжка, гидроизоляция, плитка и потолок."),
+                ("Какой запас плитки брать на ванную?", "10% при прямой укладке и 15% при диагональной. Плитку берут сразу и из одной партии: тон и калибр у разных партий отличаются."),
+                ("Нужно ли штукатурить стены под плитку?", "Если перепад больше 3–5 мм на 2 м — да. Плиточным клеем можно выровнять 1–3 мм, но толстый слой клея дороже штукатурки и дольше сохнет."),
+                ("Почему результат отличается от моих расчётов?", "Хаб использует значения калькуляторов по умолчанию: плитку 30×60, слой штукатурки 15 мм, стяжку 50 мм. Нажмите «Уточнить в калькуляторе» и введите свои параметры.")],
+    }
+
+
+def hub_kitchen():
+    floor = {"surface": "floor"}
+    stages = [
+        stage("walls", "Штукатурка и шпаклёвка стен",
+              "Стены выравнивают штукатуркой по маякам, затем шпаклюют: стартовый слой убирает мелкие неровности, финишный готовит стену под покраску или обои.",
+              "штукатурка (гипсовая, слой 15 мм, мешки по 30 кг), шпаклёвка стартовая 2 мм и финишная 1 мм, грунтовка.",
+              [item("plaster", "Штукатурка", "OSTALNOE", rows=["Маяки 3 м"]),
+               item("putty", "Шпаклёвка", "OSTALNOE", rows=["Стартовая шпаклёвка", "Финишная шпаклёвка"])]),
+        stage("apron", "Плитка на фартук",
+              "Фартук — полоса плитки между столешницей и навесными шкафами. Обычно 0,6 м в высоту по длине рабочей зоны. Размеры фартука задайте в форме.",
+              "плитка 30×60 см по 8 шт. в упаковке, запас 10%, плиточный клей, затирка.",
+              [item("tile", "Плитка для фартука", "PLITKA", set=floor, room="apron", ops="none", rows=["Площадь облицовки"])]
+              + glue_for(floor, room="apron", ops="none")),
+        stage("paint", "Покраска стен",
+              "Стены грунтуют и красят в два слоя. Для кухни берите моющуюся краску: её можно протирать от брызг и жира.",
+              "краска (расход 9 м²/л на слой, два слоя, тара 9 л), грунтовка, малярный скотч.",
+              [item("paint", "Краска для стен", "KRASKA", rows=["Грунтовка (1 слой)"])], when={"finish": "paint"}),
+        stage("wallpaper", "Обои",
+              "Обои клеят встык после шпаклёвки и грунтовки. На кухне практичнее моющиеся флизелиновые или виниловые.",
+              "обои 1,06 × 10,05 м без подгонки рисунка, обойный клей.",
+              [item("wallpaper", "Обои", "OBOI", rows=["Обойный клей"])], when={"finish": "wallpaper"}),
+        stage("laminate", "Ламинат на пол",
+              "Ламинат кладут на ровное сухое основание по подложке, вдоль света из окна. У стен оставляют зазор 8–10 мм под плинтус.",
+              "ламинат по 2,131 м² в упаковке, запас 7%, подложка, плинтус.",
+              [item("laminate", "Ламинат", "LAMINAT", doors=True, rows=["Подложка", "Плинтус"])], when={"floor": "laminate"}),
+        stage("floortile", "Плитка на пол",
+              "Плитку на пол кухни кладут от центра или от видимого угла, подрезку уводят под мебель.",
+              "плитка 30×60 см по 8 шт. в упаковке, запас 10%, плиточный клей, затирка.",
+              [item("tile", "Плитка для пола", "PLITKA", set=floor, ops="none", rows=["Площадь облицовки"])]
+              + glue_for(floor, ops="none"), when={"floor": "tile"}),
+    ]
+    toggles = (h3("Отделка") + '<div class="hub-toggles">'
+               + '<div><span class="toggle-cap">Стены</span>' + seg("finish", [("paint", "Покраска"), ("wallpaper", "Обои")], "paint") + "</div>"
+               + '<div><span class="toggle-cap">Пол</span>' + seg("floor", [("laminate", "Ламинат"), ("tile", "Плитка")], "laminate") + "</div></div>"
+               + h3("Фартук") + grid(field("apron_l", "Длина, м", "2.5"), field("apron_h", "Высота, м", "0.6"), cols=2))
+    return {
+        "fn": "remont-kuhni.html", "type": "hub-kitchen", "short": "Ремонт кухни", "crumb": "Ремонт кухни",
+        "h1": "Ремонт кухни: расчёт материалов",
+        "title": "Ремонт кухни: расчёт материалов по этапам — Метраж",
+        "desc": "Ремонт кухни под ключ: штукатурка и шпаклёвка стен, плитка на фартук, краска или обои, ламинат или плитка на пол — сколько материала нужно по вашим размерам.",
+        "lead": "Введите размеры кухни, выберите отделку стен и пола — и получите материалы на весь ремонт. Каждый этап считается тем же калькулятором, что на отдельной странице, с его значениями по умолчанию.",
+        "card": "Стены, фартук, краска или обои, пол",
+        "card_long": "Штукатурка и шпаклёвка стен, плитка на фартук, покраска или обои, ламинат или плитка на пол.",
+        "room": ("3", "3", "2.5"), "openings": "d:0.8x2;w:1.5x1.5", "toggles": toggles,
+        "stages": stages, "icon": ICONS["kraska"],
+        "buy": ("Купить материалы для кухни", "Плитку для фартука, краску, обои и ламинат можно выбрать в одном магазине.",
+                "PLITKA", [("KLEY_PLITOCHNY", "Клей для плитки"), ("KRASKA", "Краска"), ("OBOI", "Обои"), ("LAMINAT", "Ламинат")]),
+        "article": True,
+        "faq": [("Какого размера делать фартук на кухне?", "Стандартная высота — 0,6 м: от столешницы на высоте 0,85–0,9 м до навесных шкафов. Длина — вся рабочая зона, обычно 2–3 м. Если над плитой нет шкафа, фартук там поднимают до вытяжки."),
+                ("Что лучше на кухне — краска или обои?", "Моющаяся краска практичнее у плиты и мойки: её можно протирать. Обои подходят для обеденной зоны. Переключатель «Стены» пересчитывает этап."),
+                ("Ламинат или плитка на пол кухни?", "Плитка не боится воды и подходит к тёплому полу. Влагостойкий ламинат теплее на ощупь и дешевле в укладке. Переключатель «Пол» пересчитывает этап."),
+                ("Нужно ли красить стену за фартуком?", "Нет. В этой версии расчёта площадь стен для краски и обоев считается без вычета фартука — это небольшой запас. Точнее можно посчитать в калькуляторе краски.")],
+    }
+
+
+def hub_room():
+    stages = [
+        stage("insulation", "Утепление наружной стены",
+              "Если у комнаты есть наружная стена, её утепляют первой — до шпаклёвки. Утеплитель закрывают пароизоляцией и обшивают, например, гипсокартоном.",
+              "утеплитель — плиты 1200×600×50 мм, толщина утепления 100 мм; пароизоляция, дюбели-грибки.",
+              [item("insulation", "Утеплитель", "OSTALNOE", set={"surface": "one"}, room="ext", ops="w",
+                    rows=["Пароизоляция (нахлёст 10 см)", "Дюбели-грибки"])], when={"ext": "yes"}),
+        stage("putty", "Шпаклёвка стен",
+              "Стартовая шпаклёвка убирает неровности до 5 мм, финишная делает стену гладкой. Перед каждым слоем — грунтовка.",
+              "шпаклёвка стартовая 2 мм (мешки по 25 кг) и финишная 1 мм (по 20 кг), грунтовка, абразивная сетка.",
+              [item("putty", "Шпаклёвка", "OSTALNOE", rows=["Стартовая шпаклёвка", "Финишная шпаклёвка"])]),
+        stage("wallpaper", "Обои",
+              "Обои клеят после шпаклёвки и грунтовки, от окна. Рулоны берут из одной партии и с запасом в один рулон.",
+              "обои 1,06 × 10,05 м без подгонки рисунка, обойный клей.",
+              [item("wallpaper", "Обои", "OBOI", rows=["Обойный клей"])], when={"finish": "wallpaper"}),
+        stage("paint", "Покраска стен",
+              "Стены грунтуют и красят в два слоя валиком, углы — кистью.",
+              "краска (расход 9 м²/л на слой, два слоя, тара 9 л), грунтовка, малярный скотч.",
+              [item("paint", "Краска для стен", "KRASKA", rows=["Грунтовка (1 слой)"])], when={"finish": "paint"}),
+        stage("laminate", "Ламинат",
+              "Ламинат кладут по подложке на ровное сухое основание, вдоль света из окна, с зазором 8–10 мм у стен.",
+              "ламинат по 2,131 м² в упаковке, запас 7%, подложка 10 м² в рулоне.",
+              [item("laminate", "Ламинат", "LAMINAT", doors=True, rows=["Подложка"])]),
+        stage("plinth", "Плинтус",
+              "Плинтус ставят последним: он закрывает зазор у стен. Длина — периметр комнаты минус ширина дверей.",
+              "плинтус по 2,5 м, внутренние углы и заглушки у дверей.",
+              [item("laminate", "Плинтус", "LAMINAT", doors=True, row="Плинтус", rows=["Углы плинтуса (внутр.)", "Заглушки плинтуса"])]),
+    ]
+    toggles = (h3("Отделка") + '<div class="hub-toggles">'
+               + '<div><span class="toggle-cap">Стены</span>' + seg("finish", [("wallpaper", "Обои"), ("paint", "Покраска")], "wallpaper") + "</div>"
+               + '<div><span class="toggle-cap">Наружная стена</span>' + seg("ext", [("no", "Нет"), ("yes", "Есть")], "no") + "</div></div>"
+               + grid(field("ext_l", "Длина наружной стены, м", "3", show="ext:yes"), top=True)
+               + '<p class="hint" data-show="ext:yes">Утепление считается для одной наружной стены за вычетом окон.</p>')
+    return {
+        "fn": "remont-komnaty.html", "type": "hub-room", "short": "Ремонт комнаты", "crumb": "Ремонт комнаты",
+        "h1": "Ремонт комнаты: расчёт материалов",
+        "title": "Ремонт комнаты: расчёт материалов по этапам — Метраж",
+        "desc": "Ремонт комнаты под ключ: шпаклёвка, обои или краска, ламинат, плинтус и утеплитель для наружной стены — сколько материала нужно по вашим размерам.",
+        "lead": "Введите размеры комнаты, выберите обои или покраску и отметьте наружную стену — и получите материалы на весь ремонт. Каждый этап считается тем же калькулятором, что на отдельной странице, с его значениями по умолчанию.",
+        "card": "Шпаклёвка, обои или краска, ламинат",
+        "card_long": "Утепление наружной стены, шпаклёвка, обои или покраска, ламинат и плинтус.",
+        "room": ("3", "4", "2.5"), "openings": "d:0.8x2;w:1.5x1.5", "toggles": toggles,
+        "stages": stages, "icon": ICONS["oboi"],
+        "buy": ("Купить материалы для комнаты", "Обои, краску, ламинат и смеси можно выбрать в одном магазине.",
+                "LAMINAT", [("OBOI", "Обои"), ("KRASKA", "Краска"), ("OSTALNOE", "Шпаклёвка и утеплитель")]),
+        "article": False,
+        "faq": [("В каком порядке делать ремонт комнаты?", "Сверху вниз и от грязных работ к чистым: утепление и электрика, выравнивание стен, шпаклёвка, потолок, обои или покраска, пол, плинтус."),
+                ("Сколько обоев нужно на комнату 3×4 м?", "При высоте 2,5 м, двери 0,8×2 м и окне 1,5×1,5 м — около 4 рулонов метровых обоев без подгонки рисунка. Точнее — по кнопке «Уточнить в калькуляторе»."),
+                ("Нужно ли утеплять наружную стену изнутри?", "Только если стена промерзает и утеплить её снаружи нельзя. Изнутри обязательно кладут пароизоляцию, иначе в утеплителе будет конденсат."),
+                ("Почему плинтуса меньше, чем периметр комнаты?", "Из периметра вычитается ширина дверей: в проёме плинтус не ставят. К длине добавляется 5% на подрезку в углах.")],
+    }
+
+
+def hub_stage_html(i, st):
+    hidden = ""
+    if st["when"]:
+        (k, v), = st["when"].items()
+        hidden = f' data-when="{k}:{v}"'
+    return (f'<li class="stage" id="st-{st["id"]}" data-stage="{i}"{hidden}>'
+            f'<h2 class="stage-title">{st["title"]}</h2>'
+            f'<p class="stage-what">{st["what"]}</p>'
+            f'<p class="stage-mat"><b>Материал:</b> {st["material"]}</p>'
+            f'<div class="stage-res" aria-live="polite"><noscript><p>Для расчёта по этапам нужен JavaScript. Откройте калькуляторы по ссылкам в меню.</p></noscript></div>'
+            f'<button type="button" class="stage-add" data-act="hub-stage" data-stage="{i}">Добавить этап в список покупок</button></li>')
+
+
+def hub_data(h):
+    """Данные для assets/hub.js: значения калькуляторов по умолчанию, страницы калькуляторов, этапы."""
+    calcs = sorted({it["calc"] for st in h["stages"] for it in st["items"]})
+    return {"title": h["short"],
+            "defaults": {c: CALC_DEFAULTS[c] for c in calcs},
+            "pages": {c: CALC_PAGES[c] for c in calcs},
+            "openings": sorted(c for c in calcs if c in CALC_OPENINGS),
+            "stages": [{"id": st["id"], "title": st["title"], "when": st["when"], "items": st["items"]} for st in h["stages"]]}
+
+
+HUBS = []
+
+
+def build_hub(h):
+    L, W, H = h["room"]
+    form = (h3("Помещение") + PRESET_CHIPS + grid(field("room_l", "Длина, м", L), field("room_w", "Ширина, м", W), field("room_h", "Высота, м", H))
+            + openings() + h["toggles"])
+    stages = "".join(hub_stage_html(i, st) for i, st in enumerate(h["stages"]))
+    data = json.dumps(hub_data(h), ensure_ascii=False).replace("</", "<\\/")
+    related = ('<h2>По теме</h2>\n<div class="posts">' + article_card(ARTICLES[0]) + "</div>") if h["article"] else ""
+    others = "".join(f'<a href="{o["fn"]}">{o["short"]} →</a>' for o in HUBS if o["fn"] != h["fn"])
+    main = f'''<main class="wrap calc-page hub-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><a href="remont.html">Ремонт под ключ</a><span aria-hidden="true">→</span><span>{h["crumb"]}</span></nav>
+<div class="calc-head"><h1>{h["h1"]}</h1><span class="calc-tagline">Все этапы по вашим размерам</span></div>
+<p class="page-lead">{h["lead"]}</p>
+<div class="calc hub">
+<form class="form-card hub-form" id="calc-form" data-calc="{h["type"]}" data-openings="{h["openings"]}" autocomplete="off" novalidate aria-label="Размеры помещения">
+{form}
+</form>
+<section class="hub-stages" id="result" aria-label="Этапы ремонта">
+<ol class="stages">{stages}</ol>
+<div class="hub-actions"><button type="button" class="btn-primary" data-act="hub-all">Добавить всё в список покупок</button>
+<button type="button" class="list-btn" data-act="share">Поделиться</button><button type="button" class="list-btn" data-act="print">Распечатать</button></div>
+<p class="hint">Расчёты ориентировочные: этапы считаются с параметрами калькуляторов по умолчанию. Свою плитку, смесь или толщину слоя задайте по ссылке «Уточнить в калькуляторе».</p>
+<div data-fb-slot></div>
+</section>
+</div>
+<script type="application/json" id="hub-data">{data}</script>
+{buy_static(*h["buy"])}
+{AD_SLOT}
+<article class="article">
+{faq_html(h["faq"])}
+{related}
+<p class="hub-others">{others}<a href="remont.html">Все хабы «Ремонт под ключ»</a></p>
+</article>
+</main>'''
+    page(h["fn"], h["title"], h["desc"], main, h["faq"], crumb=h["crumb"], trail=[("Ремонт под ключ", "remont.html")],
+         app=False, lastmod="2026-10-29", og_title=h["h1"], og_icon=h["icon"],
+         scripts='\n<script src="assets/hub.js"></script>\n<script src="assets/calc.js"></script>')
+
+
+def hub_card(h):
+    return f'<a class="card hub-card" href="{h["fn"]}">{h["icon"]}<span class="card-name">{h["short"]}</span><span class="card-desc">{h["card"]}</span></a>'
+
+
+def build_hubs():
+    HUBS[:] = [hub_bath(), hub_kitchen(), hub_room()]
+    for h in HUBS:
+        build_hub(h)
+    cards = "".join(
+        f'<a class="post-card hub-post" href="{h["fn"]}"><span class="eyebrow">Ремонт под ключ</span>'
+        f'<span class="post-title">{h["short"]}</span>'
+        f'<span class="post-desc">{h["card_long"]}</span>'
+        f'<span class="post-go">Рассчитать →</span></a>' for h in HUBS)
+    main = f"""<main class="wrap calc-page">
+<nav class="breadcrumbs" aria-label="Хлебные крошки"><a href="index.html">Главная</a><span aria-hidden="true">→</span><span>Ремонт под ключ</span></nav>
+<div class="calc-head"><h1>Ремонт под ключ: расчёт материалов</h1><span class="calc-tagline">Все этапы на одной странице</span></div>
+<p class="page-lead">Выберите помещение, введите его размеры — и получите материалы на весь ремонт по этапам: что делается, какой материал нужен и сколько его купить. Каждый этап можно уточнить в отдельном калькуляторе, а весь список — сохранить для магазина.</p>
+<div class="posts">{cards}</div>
+</main>"""
+    page("remont.html", "Ремонт под ключ: расчёт материалов для ванной, кухни и комнаты — Метраж",
+         "Расчёт материалов на ремонт под ключ: ванная, кухня и комната по этапам — штукатурка, стяжка, плитка, обои, краска, ламинат. Бесплатно и без регистрации.",
+         main, crumb="Ремонт под ключ", app=False, lastmod="2026-10-29", og_title="Ремонт под ключ",
+         og_icon=ICONS["shtukaturka"])
+
+
 # ---------- служебные страницы ----------
 
 def mail_link():
@@ -916,9 +1232,11 @@ def build_privacy():
 <ul>
 <li><b>Яндекс Метрика с Вебвизором.</b> Счётчик собирает обезличенную статистику посещений: какие страницы открыты, сколько времени на них проведено, откуда пришёл посетитель, тип устройства и браузера, примерный регион по IP-адресу. Вебвизор записывает действия на странице — прокрутку, клики, движения мыши, — чтобы было видно, где посетителям неудобно.</li>
 <li><b>Cookie.</b> Яндекс Метрика сохраняет в браузере cookie, чтобы отличать новые визиты от повторных.</li>
-<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок и то, что вы закрыли уведомление о cookie. Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
+<li><b>Ответ «Расчёт пригодился?».</b> Если вы нажмёте «Да» или «Нет» под результатом, ответ и необязательный текст из поля «Что было не так?» (до 200 символов) уходят в Яндекс Метрику вместе с названием калькулятора. Больше никуда они не отправляются. Не пишите в это поле имя, телефон и другие личные данные.</li>
+<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
 </ul>
 <p>Имя, телефон, адрес и другие данные, по которым вас можно узнать, сайт не спрашивает и не собирает.</p>
+<p>Шрифты сайта загружаются с самого metrazh.online, сторонние шрифтовые сервисы не используются.</p>
 <h2>Зачем</h2>
 <p>Статистика нужна, чтобы понимать, какими калькуляторами пользуются, где в них ошибаются, и улучшать сайт. Метрика также отмечает выполненные расчёты и переходы по ссылкам в магазин.</p>
 <h2>Кому передаются данные</h2>
@@ -981,7 +1299,7 @@ def build_404():
 def build_seo_files():
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
-        for url, mod in SITEMAP:
+        for url, mod in sorted(SITEMAP, key=lambda x: x[0] != SITE_URL):
             prio = "1.0" if url == SITE_URL else "0.8"
             f.write(f"  <url><loc>{url}</loc><lastmod>{mod}</lastmod><priority>{prio}</priority></url>\n")
         f.write("</urlset>\n")
@@ -999,7 +1317,6 @@ def build_seo_files():
 
 
 if __name__ == "__main__":
-    build_index()
     build_tile()
     build_wallpaper()
     build_paint()
@@ -1010,6 +1327,8 @@ if __name__ == "__main__":
     build_insulation()
     build_screed()
     build_brick()
+    build_hubs()
+    build_index()   # после хабов: на главной их карточки
     build_article_tiles()
     build_stati()
     build_privacy()

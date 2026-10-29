@@ -1,0 +1,37 @@
+# IndexNow: после каждого пуша в main сообщает Яндексу об изменённых страницах.
+#
+# Скрипт tools/indexnow.sh берёт HTML-страницы, изменённые этим пушем, оставляет
+# те, что есть в sitemap.xml, ждёт публикации на GitHub Pages и отправляет их
+# на https://yandex.com/indexnow. Ошибка запроса не роняет workflow — в журнале
+# остаётся только предупреждение.
+#
+# Пуши, которые делает сам GitHub Actions (публикация наливного пола), этот
+# workflow не запускают — там тот же скрипт вызывается последним шагом.
+name: IndexNow
+
+on:
+  push:
+    branches: [main]
+    paths: ["*.html", "sitemap.xml"]
+
+permissions:
+  contents: read
+  pages: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Отправить изменённые страницы в Яндекс
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/indexnow.sh "${{ github.event.before }}" "${{ github.sha }}"
