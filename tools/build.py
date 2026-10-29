@@ -45,10 +45,65 @@ OG_PAGES = []
 # Иконки сайта: assets/favicon.svg (логотип-рулетка) и assets/apple-touch-icon.png (180×180).
 ICONS_HEAD = ('<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
               '<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">')
-# Тема: выбранная кнопкой в шапке (localStorage rk-theme) ставится на <html> до отрисовки,
-# чтобы страница не мигала светлой. Без выбора — по настройке системы. Логика кнопки — в assets/site.js.
-THEME_INIT = ('<script>try{var t=localStorage.getItem("rk-theme");'
-              'if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>')
+# Тема по местному времени посетителя: с THEME_DAY_START:00 до THEME_NIGHT_START:00 — светлая,
+# остальное время — тёмная. Часы меняются только здесь. Кнопка в шапке (assets/site.js) выбирает
+# тему вручную до ближайшей смены по расписанию: выбор хранится в localStorage rk-theme как
+# {"t": "dark", "until": <мс>} и после срока удаляется. Без localStorage и без JavaScript тема —
+# по настройке системы (prefers-color-scheme в assets/style.css).
+THEME_DAY_START = 8
+THEME_NIGHT_START = 18
+# Цвет панели браузера на телефоне: светлая и тёмная тема.
+THEME_COLORS = {"light": "#F5F1EA", "dark": "#0D0F11"}
+# Скрипт в <head>: ставит data-theme до отрисовки, чтобы страница не мигала, и даёт window.rkTheme
+# для кнопки и живой смены темы (site.js). Пробелы в начале строк при сборке убираются.
+_THEME_JS = """
+(function () {
+  var DAY = %d, NIGHT = %d, KEY = "rk-theme", COLORS = %s, root = document.documentElement;
+  function scheduled(now) { var h = now.getHours(); return h >= DAY && h < NIGHT ? "light" : "dark"; }
+  function nextChange(now) {
+    var h = now.getHours(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h < DAY ? DAY : h < NIGHT ? NIGHT : DAY);
+    if (h >= NIGHT) d.setDate(d.getDate() + 1);
+    return d.getTime();
+  }
+  function manual(now) {
+    var v = localStorage.getItem(KEY);
+    if (v === null) return null;
+    try { v = JSON.parse(v); } catch (e) { v = null; }
+    if (v && (v.t === "light" || v.t === "dark") && v.until > now.getTime()) return v.t;
+    localStorage.removeItem(KEY);
+    return null;
+  }
+  function set(t) {
+    if (root.getAttribute("data-theme") !== t) root.setAttribute("data-theme", t);
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) metas[i].setAttribute("content", COLORS[t]);
+  }
+  function apply() {
+    var now = new Date();
+    try { set(manual(now) || scheduled(now)); } catch (e) { /* нет localStorage — тема по системе */ }
+  }
+  window.rkTheme = {
+    apply: apply,
+    current: function () {
+      var t = root.getAttribute("data-theme");
+      return t || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    },
+    toggle: function () {
+      var now = new Date(), t = this.current() === "dark" ? "light" : "dark";
+      set(t);
+      try {
+        if (t === scheduled(now)) localStorage.removeItem(KEY);
+        else localStorage.setItem(KEY, JSON.stringify({ t: t, until: nextChange(now) }));
+      } catch (e) { /* без хранилища — до перезагрузки */ }
+      return t;
+    }
+  };
+  apply();
+})();
+""" % (THEME_DAY_START, THEME_NIGHT_START, json.dumps(THEME_COLORS))
+THEME_INIT = "<script>" + "".join(line.strip() + ("\n" if line.strip().startswith("//") else "") for line in _THEME_JS.strip().splitlines()) + "</script>"
+# Без JavaScript цвет панели браузера — по настройке системы, как и тема.
+THEME_META = "\n".join(f'<meta name="theme-color" content="{c}" media="(prefers-color-scheme: {t})">' for t, c in THEME_COLORS.items())
 THEME_BTN = ('<button type="button" class="theme-btn" id="theme-btn" aria-label="Переключить тему" title="Светлая или тёмная тема">'
              '<svg class="ico-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'
              '<svg class="ico-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
@@ -308,7 +363,7 @@ def page(fn, title, desc, main_html, faq=None, crumb=None, robots=None, in_sitem
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{og_alt}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#1E2226">
+{THEME_META}
 <meta name="color-scheme" content="light dark">
 {THEME_INIT}
 <link rel="manifest" href="site.webmanifest">
@@ -1352,7 +1407,7 @@ def build_privacy():
 <li><b>Яндекс Метрика с Вебвизором.</b> Счётчик собирает обезличенную статистику посещений: какие страницы открыты, сколько времени на них проведено, откуда пришёл посетитель, тип устройства и браузера, примерный регион по IP-адресу. Вебвизор записывает действия на странице — прокрутку, клики, движения мыши, — чтобы было видно, где посетителям неудобно.</li>
 <li><b>Cookie.</b> Яндекс Метрика сохраняет в браузере cookie, чтобы отличать новые визиты от повторных.</li>
 <li><b>Ответ «Расчёт пригодился?».</b> Если вы нажмёте «Да» или «Нет» под результатом, ответ и необязательный текст из поля «Что было не так?» (до 200 символов) уходят в Яндекс Метрику вместе с названием калькулятора. Больше никуда они не отправляются. Не пишите в это поле имя, телефон и другие личные данные.</li>
-<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, выбранную светлую или тёмную тему, то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
+<li><b>Данные в вашем браузере (localStorage).</b> Сайт запоминает размеры комнаты, чтобы не вводить их в каждом калькуляторе заново, ваш список покупок, светлую или тёмную тему, если вы выбрали её кнопкой (до ближайшей смены темы по времени суток), то, что вы закрыли уведомление о cookie или уже ответили на вопрос «Расчёт пригодился?». Эти данные хранятся только в вашем браузере и никуда не отправляются.</li>
 </ul>
 <p>Имя, телефон, адрес и другие данные, по которым вас можно узнать, сайт не спрашивает и не собирает.</p>
 <p>Шрифты сайта загружаются с самого metrazh.online, сторонние шрифтовые сервисы не используются.</p>

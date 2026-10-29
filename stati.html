@@ -17,9 +17,10 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Статьи о ремонте">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#1E2226">
+<meta name="theme-color" content="#F5F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D0F11" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
-<script>try{var t=localStorage.getItem("rk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<script>(function () {var DAY = 8, NIGHT = 18, KEY = "rk-theme", COLORS = {"light": "#F5F1EA", "dark": "#0D0F11"}, root = document.documentElement;function scheduled(now) { var h = now.getHours(); return h >= DAY && h < NIGHT ? "light" : "dark"; }function nextChange(now) {var h = now.getHours(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h < DAY ? DAY : h < NIGHT ? NIGHT : DAY);if (h >= NIGHT) d.setDate(d.getDate() + 1);return d.getTime();}function manual(now) {var v = localStorage.getItem(KEY);if (v === null) return null;try { v = JSON.parse(v); } catch (e) { v = null; }if (v && (v.t === "light" || v.t === "dark") && v.until > now.getTime()) return v.t;localStorage.removeItem(KEY);return null;}function set(t) {if (root.getAttribute("data-theme") !== t) root.setAttribute("data-theme", t);var metas = document.querySelectorAll('meta[name="theme-color"]');for (var i = 0; i < metas.length; i++) metas[i].setAttribute("content", COLORS[t]);}function apply() {var now = new Date();try { set(manual(now) || scheduled(now)); } catch (e) { /* нет localStorage — тема по системе */ }}window.rkTheme = {apply: apply,current: function () {var t = root.getAttribute("data-theme");return t || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");},toggle: function () {var now = new Date(), t = this.current() === "dark" ? "light" : "dark";set(t);try {if (t === scheduled(now)) localStorage.removeItem(KEY);else localStorage.setItem(KEY, JSON.stringify({ t: t, until: nextChange(now) }));} catch (e) { /* без хранилища — до перезагрузки */ }return t;}};apply();})();</script>
 <link rel="manifest" href="site.webmanifest">
 <!-- Подтверждение прав в Яндекс Вебмастере: раскомментируйте и вставьте код -->
 <!-- <meta name="yandex-verification" content="YANDEX_VERIFICATION_CODE"> -->
