@@ -49,9 +49,11 @@
   --radius: 16px;
 }
 
-/* тёмная тема: графитовый фон, светлый текст, тот же оранжевый акцент */
+/* тёмная тема: графитовый фон, светлый текст, тот же оранжевый акцент.
+   Включается по настройке системы, если на сайте не выбрана светлая, или кнопкой в шапке
+   (data-theme="dark" на <html>, выбор хранится в localStorage). Печать всегда светлая. */
 @media screen and (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16191C;
     --ink: #ECE7DE;
     --muted: #A9AFB6;
@@ -76,11 +78,47 @@
     --grid-minor: rgba(236, 231, 222, .025);
     color-scheme: dark;
   }
-  .result-card { border: 1.5px solid var(--frame); }
-  .card svg, .post-card svg { stroke: var(--ink); }
-  .card svg [fill="#F7E2D5"] { fill: var(--tint); }
-  .pill svg { stroke: var(--link); }
+  :root:not([data-theme="light"]) .result-card { border: 1.5px solid var(--frame); }
+  :root:not([data-theme="light"]) .card svg, :root:not([data-theme="light"]) .post-card svg { stroke: var(--ink); }
+  :root:not([data-theme="light"]) .card svg [fill="#F7E2D5"] { fill: var(--tint); }
+  :root:not([data-theme="light"]) .pill svg { stroke: var(--link); }
+  :root:not([data-theme="light"]) .theme-btn .ico-moon { display: none; }
+  :root:not([data-theme="light"]) .theme-btn .ico-sun { display: block; }
 }
+@media screen {
+  :root[data-theme="dark"] {
+    --bg: #16191C;
+    --ink: #ECE7DE;
+    --muted: #A9AFB6;
+    --text-2: #C9CDD2;
+    --text-3: #D5D8DC;
+    --card: #202428;
+    --line: #343A40;
+    --field-line: #4C535A;
+    --seg-bg: #2A2F34;
+    --tint: #3D2B20;
+    --dark-line: #3E444A;
+    --surface-dark: #0D0F11;
+    --frame: #59606A;
+    --shadow: #000000;
+    --field: #15181B;
+    --link: #F0A27A;
+    --link-hover: #F7C4A8;
+    --seg-on: #ECE7DE;
+    --seg-on-text: #16191C;
+    --seg-on-sub: #3A3F45;
+    --grid-major: rgba(236, 231, 222, .05);
+    --grid-minor: rgba(236, 231, 222, .025);
+    color-scheme: dark;
+  }
+  :root[data-theme="dark"] .result-card { border: 1.5px solid var(--frame); }
+  :root[data-theme="dark"] .card svg, :root[data-theme="dark"] .post-card svg { stroke: var(--ink); }
+  :root[data-theme="dark"] .card svg [fill="#F7E2D5"] { fill: var(--tint); }
+  :root[data-theme="dark"] .pill svg { stroke: var(--link); }
+  :root[data-theme="dark"] .theme-btn .ico-moon { display: none; }
+  :root[data-theme="dark"] .theme-btn .ico-sun { display: block; }
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -131,10 +169,15 @@ main { flex: 1 0 auto; }
 .header-bar .nav { order: 2; margin-left: auto; }
 .list-link { order: 3; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 auto;
   border-radius: 10px; border: 1.5px solid rgba(245, 241, 234, .25); color: var(--on-surface); text-decoration: none; }
+.theme-btn { order: 4; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 auto; padding: 0;
+  border-radius: 10px; border: 1.5px solid rgba(245, 241, 234, .25); background: transparent; color: var(--on-surface); cursor: pointer; }
+.theme-btn:hover { background: rgba(245, 241, 234, .1); }
+.theme-btn svg { display: block; }
+.theme-btn .ico-sun { display: none; }
 .list-link:hover { background: rgba(245, 241, 234, .1); color: var(--on-surface); }
 .list-count { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
   background: var(--btn); color: var(--white); font: 700 12px/20px var(--mono); text-align: center; }
-@media (max-width: 760px) { .list-link { order: 2; margin-left: auto; } .header-bar .nav { order: 3; margin-left: 0; } }
+@media (max-width: 760px) { .list-link { order: 2; margin-left: auto; } .theme-btn { order: 2; } .header-bar .nav { order: 3; margin-left: 0; } }
 
 /* уведомление о cookie: над полосой итога (отступ снизу задаёт site.js) */
 .cookie { position: fixed; left: 16px; right: 16px; bottom: 8px; z-index: 20; max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px;
@@ -320,6 +363,10 @@ button.btn-primary { border: 0; font: 700 16px var(--font); cursor: pointer; }
   border: 1.5px solid var(--link); color: var(--link); background: var(--field); font-weight: 700; font-size: 14px; text-decoration: none;
 }
 .buy-small:hover { background: var(--btn); border-color: var(--btn); color: var(--white); }
+/* второй магазин (AM.PM): отдельная строка под маркировкой Максидома, кнопки обводкой */
+.buy-second { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 10px; }
+.buy-sub { margin: 0; font-size: 16px; font-weight: 800; }
+.buy-second .ad-mark { margin-top: 2px; }
 .ad-mark { margin: 12px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
 
 /* реклама РСЯ — пустой блок не занимает места */
