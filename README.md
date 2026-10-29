@@ -27,11 +27,11 @@
 
 | Статья | Адрес | Дата публикации |
 |---|---|---|
-| Сколько плитки нужно на ванную | `/skolko-plitki-na-vannuyu.html` | 01.11.2026 09:00 МСК |
+| Сколько плитки нужно на ванную | `/skolko-plitki-na-vannuyu.html` | 29.10.2026 |
 
 ### Отложенная публикация
 
-Статью можно подготовить в отдельной ветке и выпустить по расписанию через GitHub Actions — пример в `.github/workflows/publish-article.yml`. В нужный момент workflow сливает ветку статьи в `main`, и GitHub Pages обновляет сайт. Отменить публикацию: Actions → workflow → Disable workflow, или удалить ветку статьи. Опубликовать раньше: Actions → workflow → Run workflow с `force = true`.
+Страницу можно подготовить в отдельной ветке и выпустить по расписанию через GitHub Actions — так запланирован калькулятор наливного пола (`.github/workflows/publish-calc-nalivnoy-pol.yml`). Отменить публикацию: Actions → workflow → Disable workflow, или удалить ветку. Опубликовать раньше: Actions → workflow → Run workflow с `force = true`.
 ## Превью для соцсетей и схемы
 
 - У каждой страницы своё превью 1200×630 — `assets/og/<страница>.png` (графитовый фон, миллиметровка, логотип, название страницы). В `<head>` прописаны `og:image`, `og:image:width`, `og:image:height`, `og:image:alt` и `twitter:card=summary_large_image`. Страница 404 использует превью главной.
