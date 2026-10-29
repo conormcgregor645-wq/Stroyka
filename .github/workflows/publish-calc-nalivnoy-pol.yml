@@ -81,6 +81,7 @@ jobs:
             echo "::error::Статья про плитку ещё не в main, а ветка калькулятора содержит её. Публикация остановлена, чтобы не выпустить статью раньше времени."
             exit 1
           fi
+          echo "before=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           git merge --no-ff "origin/$CALC_BRANCH" -m "Публикация калькулятора наливного пола"
           git push origin HEAD:main
           echo "merged=true" >> "$GITHUB_OUTPUT"
@@ -92,3 +93,12 @@ jobs:
         run: |
           gh api -X POST "repos/${{ github.repository }}/pages/builds" \
             || echo "::warning::Не удалось запросить сборку Pages — она запустится от пуша в main."
+
+      # Пуш из Actions не запускает workflow IndexNow, поэтому сообщаем Яндексу отсюда.
+      # Ошибка здесь не роняет публикацию — только предупреждение.
+      - name: Сообщить Яндексу о новых страницах (IndexNow)
+        if: steps.merge.outputs.merged == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/indexnow.sh "${{ steps.merge.outputs.before }}" HEAD

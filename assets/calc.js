@@ -12,15 +12,21 @@
 
   /* ---------- helpers ---------- */
 
+  // Откуда калькуляторы берут значения: обычно из формы, а хабы «Ремонт под ключ»
+  // подставляют свои значения и считают теми же формулами (см. runCalc).
+  var src = {
+    get: function (name) { var el = form.elements[name]; return el ? el.value : null; },
+    ops: function () { return readFormOpenings(); }
+  };
   function num(name, fallback) {
-    var el = form.elements[name];
-    if (!el) return fallback || 0;
-    var v = parseFloat(String(el.value).replace(",", "."));
+    var raw = src.get(name);
+    if (raw == null) return fallback || 0;
+    var v = parseFloat(String(raw).replace(",", "."));
     return isFinite(v) && v >= 0 ? v : (fallback || 0);
   }
   function val(name) {
-    var el = form.elements[name];
-    return el ? el.value : "";
+    var raw = src.get(name);
+    return raw == null ? "" : String(raw);
   }
   // Округление вверх/вниз с допуском: 1,2 / 0,09 × 1,05 в JS даёт 14,000000000000002,
   // а нужно ровно 14 — без допуска калькулятор добавлял лишнюю штуку.
@@ -108,6 +114,9 @@
   }
 
   function readOpenings() {
+    return src.ops();
+  }
+  function readFormOpenings() {
     if (!openingsEl || openingsEl.closest("[hidden]")) return [];
     return Array.prototype.map.call(openingsEl.querySelectorAll(".opening"), function (row) {
       function f(k) {
@@ -139,7 +148,8 @@
     room_l: [0.1, 100, "м"], room_w: [0.1, 100, "м"], room_h: [0.1, 10, "м"], part_l: [0.1, 100, "м"],
     area: [0.01, 10000, "м²"],
     tile_w: [1, 0, "см"], tile_h: [1, 0, "см"], roll_l: [0.01, 0, "м"],
-    board_l: [10, 0, "мм"], board_w: [10, 0, "мм"]
+    board_l: [10, 0, "мм"], board_w: [10, 0, "мм"],
+    apron_l: [0.1, 100, "м"], apron_h: [0.1, 10, "м"], ext_l: [0.1, 100, "м"]   // хабы: фартук и наружная стена
   };
   function checkLimits() {
     for (var name in LIMITS) {
@@ -373,8 +383,10 @@
     if (type === "selflevel") return drawSection();
     var L = num("room_l"), W = num("room_w");
     var surface = val("surface"), mode = val("mode");
-    var oneWall = type === "brick" && mode === "one";
-    if (oneWall) W = BRICK_DEPTH[val("wall")] || 0.25; // одна стена: рисуем её толщину
+    var insWall = type === "insulation" && surface === "one";
+    var oneWall = (type === "brick" && mode === "one") || insWall;
+    // Одна стена: рисуем её толщину (у утеплителя — толщину утепления).
+    if (oneWall) W = insWall ? (num("total_mm") / 1000 || 0.1) : BRICK_DEPTH[val("wall")] || 0.25;
     if (!(L > 0 && W > 0)) {
       planEl.innerHTML = '<text x="170" y="124" text-anchor="middle" class="svg-hint">Введите длину и ширину</text>';
       planEl.setAttribute("aria-label", "Схема появится после ввода размеров");
@@ -383,7 +395,7 @@
     }
     var walls = type === "wallpaper" || (type === "brick" && !oneWall) || (type === "drywall" && mode !== "ceiling") ||
       surface === "walls" || surface === "both";
-    var floor = !(type === "wallpaper" || type === "brick" || (type === "drywall" && mode !== "ceiling") || surface === "walls");
+    var floor = !(type === "wallpaper" || type === "brick" || (type === "drywall" && mode !== "ceiling") || surface === "walls" || insWall);
     var s = Math.min(250 / L, 180 / W);
     var rw = Math.max(20, L * s), rh = Math.max(6, W * s);
     var x0 = (310 - rw) / 2 + 4, y0 = 34 + (186 - rh) / 2;
@@ -409,7 +421,7 @@
           '<path class="pl-seam" d="M0 0V' + bw + "M0 " + bw + "H" + bl + "M" + bl / 2 + " " + bw + "V" + 2 * bw + "M0 " + 2 * bw + "H" + bl + '"/></pattern>';
       }
     }
-    if (oneWall) { label = "стена " + fmt(L) + " м, толщина " + fmt(W * 1000, 0) + " мм"; what = "Стена в плане"; }
+    if (oneWall) { label = "стена " + fmt(L) + " м, " + (insWall ? "утепление " : "толщина ") + fmt(W * 1000, 0) + " мм"; what = "Стена в плане"; }
 
     var svg = defs ? "<defs>" + defs + "</defs>" : "";
     svg += '<rect class="' + fill + '" x="' + x0 + '" y="' + y0 + '" width="' + rw + '" height="' + rh + '"' + (defs ? ' style="fill:url(#pl-pat)"' : "") + "/>";
@@ -521,8 +533,11 @@
         if (m) addOpening(m[1], m[2], m[3], m[4]);
       });
     } else {
-      addOpening("d", "0.8", "2.0", 1);
-      addOpening("w", "1.4", "1.5", 1);
+      // Проёмы по умолчанию: data-openings у формы (хабы) или дверь и окно.
+      (form.getAttribute("data-openings") || "d:0.8x2.0;w:1.4x1.5").split(";").forEach(function (part) {
+        var m = part.match(/^([dw]):([\d.]+)x([\d.]+)$/);
+        if (m) addOpening(m[1], m[2], m[3], 1);
+      });
     }
   }
 
@@ -889,13 +904,15 @@
       var r = room();
       var ops = readOpenings();
       var surface = val("surface");
-      var area = surfaceArea(r, ops);
+      // «Одна стена» — наружная стена длиной L: площадь L × H минус её окна и двери.
+      if (surface === "one" && openingsTooBig(r.L * r.H, ops)) return { error: OPENINGS_ERROR };
+      var area = surface === "one" ? Math.max(0, r.L * r.H - openingsArea(ops)) : surfaceArea(r, ops);
       var total = num("total_mm");
       var bl = num("board_l"), bw = num("board_w"), bt = num("board_t");
       var perPack = Math.round(num("per_pack"));
       var reserve = num("reserve") / 100;
       var price = num("price");
-      if (val("surface") !== "floor" && val("surface") !== "ceiling" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
+      if (surface === "walls" && openingsTooBig(r.perimeter * r.H, ops)) return { error: OPENINGS_ERROR };
       if (!area) return { error: "Введите размеры помещения." };
       if (!total || !bl || !bw || !bt) return { error: "Заполните толщину утепления и размеры плиты." };
 
@@ -905,7 +922,7 @@
       var packs = perPack ? up(boards / perPack) : 0;
       var volume = area * layers * bt / 1000;
       var film = up(area * 1.1);
-      var dowels = surface === "walls" ? up(area * 6) : 0;
+      var dowels = surface === "walls" || surface === "one" ? up(area * 6) : 0;
 
       var rows = [
         ["Площадь утепления", fmt(area) + " м²"],
@@ -1069,22 +1086,86 @@
     }
   };
 
+  // Те же формулы на произвольных значениях: values — {имя поля: значение}, ops — проёмы.
+  function runCalc(calcType, values, ops) {
+    var prev = src;
+    src = {
+      get: function (name) { return Object.prototype.hasOwnProperty.call(values, name) ? values[name] : null; },
+      ops: function () { return ops || []; }
+    };
+    try {
+      return calculators[calcType]();
+    } finally {
+      src = prev;
+    }
+  }
+
+  /* ---------- «Расчёт пригодился?» ---------- */
+
+  // Один раз на странице: после ответа блок больше не показывается (localStorage).
+  // Ответ уходит только целью Метрики feedback_yes / feedback_no.
+  var FB_KEY = "rk-feedback";
+  var fbPage = location.pathname.split("/").pop() || "index.html";
+  var fbEl = null;
+  function feedback() {
+    if (fbEl || (storageGet(FB_KEY) || {})[fbPage]) return;
+    fbEl = document.createElement("div");
+    fbEl.className = "fb";
+    fbEl.innerHTML = '<div class="fb-ask"><span class="fb-q" id="fb-q">Расчёт пригодился?</span>' +
+      '<button type="button" class="fb-btn" data-fb="yes" aria-describedby="fb-q">Да</button>' +
+      '<button type="button" class="fb-btn" data-fb="no" aria-describedby="fb-q">Нет</button></div>';
+    var slot = document.querySelector("[data-fb-slot]");   // в хабах — под этапами
+    if (slot) slot.appendChild(fbEl); else resultEl.parentNode.insertBefore(fbEl, resultEl.nextSibling);
+    fbEl.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-fb]");
+      if (!btn) return;
+      var answer = btn.getAttribute("data-fb");
+      if (answer === "yes") return thanks("feedback_yes", { calc: type });
+      if (answer === "no") {
+        fbEl.innerHTML = '<label class="fb-q" for="fb-text">Что было не так? <span>Необязательно</span></label>' +
+          '<textarea id="fb-text" maxlength="200" rows="3"></textarea>' +
+          '<button type="button" class="fb-btn fb-send" data-fb="send">Отправить</button>';
+        fbEl.querySelector("textarea").focus();
+      }
+      if (answer === "send") {
+        thanks("feedback_no", { calc: type, text: fbEl.querySelector("textarea").value.trim().slice(0, 200) });
+      }
+    });
+  }
+  function thanks(goalName, params) {
+    goal(goalName, params);
+    var done = storageGet(FB_KEY) || {};
+    done[fbPage] = 1;
+    storageSet(FB_KEY, done);
+    fbEl.innerHTML = '<p class="fb-thanks" role="status">Спасибо!</p>';
+  }
+
   /* ---------- wiring ---------- */
 
   var touched = false;
   var goalSent = false;
+  // mem=0 в адресе — не запоминать размеры (ссылка из хаба на фартук: это не размеры комнаты).
+  var saveRoom = new URLSearchParams(location.search).get("mem") !== "0";
+  // Хабы «Ремонт под ключ» (assets/hub.js) считают несколько этапов теми же формулами.
+  var hub = type.indexOf("hub-") === 0 && typeof window.RKHub === "function" ? window.RKHub({
+    form: form, resultEl: resultEl, type: type, run: runCalc, val: val, readOpenings: readFormOpenings,
+    fmt: fmt, groupDigits: groupDigits, esc: esc, goal: goal, flash: flash
+  }) : null;
 
   function update() {
-    var room = {};
-    ROOM_FIELDS.forEach(function (k) {
-      if (form.elements[k]) room[k] = form.elements[k].value;
-    });
-    var saved = storageGet(ROOM_KEY) || {};
-    storageSet(ROOM_KEY, Object.assign(saved, room));
+    if (saveRoom) {
+      var room = {};
+      ROOM_FIELDS.forEach(function (k) {
+        if (form.elements[k]) room[k] = form.elements[k].value;
+      });
+      var saved = storageGet(ROOM_KEY) || {};
+      storageSet(ROOM_KEY, Object.assign(saved, room));
+    }
 
     applyVisibility();
     var limitError = checkLimits();
-    var ok = render(limitError ? { error: limitError } : calculators[type]());
+    var ok = hub ? hub(limitError) : render(limitError ? { error: limitError } : calculators[type]());
+    if (ok) feedback();
     drawPlan();
     // Цель «расчёт выполнен» — один раз за визит и только после действий пользователя.
     if (ok && touched && !goalSent) {

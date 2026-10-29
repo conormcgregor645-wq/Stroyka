@@ -1,3 +1,17 @@
+/* ---------- шрифты (свои файлы, без Google Fonts): Manrope и JetBrains Mono, OFL 1.1 ---------- */
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/manrope-cyrillic-400.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/manrope-latin-400.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/manrope-cyrillic-600.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/manrope-latin-600.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/manrope-cyrillic-700.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/manrope-latin-700.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 800; font-display: swap; src: url("fonts/manrope-cyrillic-800.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 800; font-display: swap; src: url("fonts/manrope-latin-800.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/jetbrains-mono-cyrillic-500.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/jetbrains-mono-latin-500.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/jetbrains-mono-cyrillic-700.woff2") format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/jetbrains-mono-latin-700.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
 /* Метраж — общие стили всех страниц. Цвета — только через переменные. */
 :root {
   --bg: #F5F1EA;
@@ -422,6 +436,71 @@ button.btn-primary { border: 0; font: 700 16px var(--font); cursor: pointer; }
 .list-shared { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border: 1.5px dashed var(--link); border-radius: 12px; }
 .list-shared p, .list-empty { margin: 0; flex: 1 1 240px; }
 
+/* «Расчёт пригодился?» */
+.fb { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; background: var(--card); border: 1.5px dashed var(--field-line); border-radius: 12px; }
+.fb-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.fb-q { flex: 1 1 auto; font-weight: 700; font-size: 15px; }
+.fb-q span { font-weight: 500; color: var(--muted); }
+.fb-btn { min-width: 72px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1.5px solid var(--frame); background: var(--field); color: var(--ink); font: 700 15px var(--font); cursor: pointer; }
+.fb-btn:hover { border-color: var(--link); color: var(--link); }
+.fb-send { align-self: flex-start; background: var(--btn); border-color: var(--btn); color: var(--white); }
+.fb-send:hover { background: var(--btn-hover); color: var(--white); }
+.fb textarea { width: 100%; min-height: 76px; padding: 10px 12px; border: 1.5px solid var(--field-line); border-radius: 10px; background: var(--field); color: var(--ink); font: 16px/1.4 var(--font); resize: vertical; }
+.fb-thanks { margin: 0; font-weight: 700; }
+
+/* хабы «Ремонт под ключ» */
+.home-sub { margin: 8px 0 -4px; font-size: 22px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.home-sub a { font-size: 15px; font-weight: 700; }
+.hub-cards { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+.hub-card { border-width: 2px; box-shadow: 4px 4px 0 var(--accent); }
+.hub-link { margin: -4px 0 0; font-weight: 700; }
+.hub-link a { display: inline-flex; align-items: center; min-height: 44px; }
+.hub-others { display: flex; flex-wrap: wrap; gap: 4px 18px; font-weight: 700; }
+.hub-others a { display: inline-flex; align-items: center; min-height: 44px; }
+.hub .hub-form { flex: 1 1 340px; }
+/* форма хаба узкая и на компьютере: размеры в три колонки, проёмы — в две строки, как на телефоне */
+.hub-form #openings-block, .hub-form .hub-toggles { margin-top: 20px; }
+.hub-form .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hub-form .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hub-form .opening { grid-template-columns: 1fr 1fr 44px; }
+.hub-form .opening .field:first-child { grid-column: 1 / -1; }
+.hub-form .opening .field:nth-child(4) { display: none; }
+.hub-stages { flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.hub-toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.toggle-cap { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.stages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: stage; }
+.stage { counter-increment: stage; position: relative; display: flex; flex-direction: column; gap: 8px; padding: 20px 22px 20px 70px; background: var(--card); border: 1.5px solid var(--frame); border-radius: var(--radius); }
+.stage[hidden] { display: none; }
+.stage::before { content: counter(stage); position: absolute; left: 20px; top: 18px; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-dark); color: var(--on-surface); font: 700 16px/34px var(--mono); text-align: center; }
+.stage-title { margin: 0; font-size: 21px; line-height: 1.25; font-weight: 800; }
+.stage-what, .stage-mat { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+.si-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 4px; }
+.si { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: var(--surface-dark); color: var(--on-surface); min-width: 0; }
+.si-name { font: 700 12px var(--mono); letter-spacing: .5px; text-transform: uppercase; color: var(--on-dark); }
+.si-val { font: 700 22px/1.2 var(--mono); color: var(--white); overflow-wrap: anywhere; }
+.si-sub { font-size: 14px; color: var(--on-dark-text); }
+.si-rows { list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px dashed var(--dark-line); }
+.si-rows li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--dark-line); font-size: 13px; }
+.si-rows li span { color: var(--on-dark-muted); }
+.si-rows li b { font-family: var(--mono); text-align: right; }
+.si-link { margin-top: 6px; display: inline-flex; align-items: center; min-height: 32px; color: var(--on-dark); font-weight: 700; font-size: 14px; }
+.si-link:hover { color: var(--white); }
+.si-err { margin: 0; color: var(--on-dark); font-size: 15px; }
+.stage-res .si-err { padding: 12px 14px; border-radius: 12px; background: var(--surface-dark); }
+.si .si-err { padding: 0; }
+.stage-add { align-self: flex-start; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1.5px dashed var(--link); background: transparent; color: var(--link); font: 700 14px var(--font); cursor: pointer; }
+.stage-add:hover { background: var(--tint); }
+.stage-add:disabled { opacity: .5; cursor: default; }
+.hub-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.hub-actions .btn-primary { flex: 1 1 260px; min-height: 52px; }
+.hub-stages .hint { margin: 0; }
+@media (max-width: 600px) {
+  .stage { padding: 62px 16px 18px; }
+  .stage::before { left: 16px; top: 16px; }
+  .stage-title { font-size: 19px; }
+  .hub-actions .list-btn { flex: 1 1 120px; }
+}
+
 /* полоса итога на телефоне */
 .mbar { display: none; }
 @media (max-width: 760px) {
@@ -451,9 +530,12 @@ button.btn-primary { border: 0; font: 700 16px var(--font); cursor: pointer; }
 /* печать: только параметры и результат */
 @media print {
   body { background: var(--white); display: block; }
-  .site-header, .site-footer, .article:not(.post), .buy-card, .ad-slot, .res-actions, .mbar, .calc-tagline, .breadcrumbs, .btn, .icon-btn, .cookie, .presets, .list-actions, .list-shared, .list-btns .buy-btn { display: none !important; }
+  .site-header, .site-footer, .article:not(.post), .buy-card, .ad-slot, .res-actions, .mbar, .calc-tagline, .breadcrumbs, .btn, .icon-btn, .cookie, .presets, .list-actions, .list-shared, .list-btns .buy-btn, .fb, .hub-actions, .stage-add, .si-link, .hub-others { display: none !important; }
   .calc { display: block; }
   .form-card, .plan-card { break-inside: avoid; margin-bottom: 12px; }
   .result-card { background: var(--white); color: var(--ink); box-shadow: none; border: 1.5px solid var(--frame); break-inside: avoid; margin-bottom: 12px; }
   .res-big, .res-sub, .res-rows li span, .res-cap, .res-warn { color: var(--ink); }
+  .stage { break-inside: avoid; }
+  .si { background: var(--white); color: var(--ink); border: 1px solid var(--frame); }
+  .si-name, .si-val, .si-sub, .si-rows li span { color: var(--ink); }
 }
