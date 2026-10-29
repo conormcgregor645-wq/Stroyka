@@ -1,0 +1,10 @@
+{
+  "name": "metrazh-og",
+  "private": true,
+  "description": "Генератор превью для соцсетей (assets/og/*.png). Запуск: npm install && node render.cjs",
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
+    "playwright": "1.64.0"
+  }
+}

@@ -32,6 +32,18 @@
 ### Отложенная публикация
 
 Статью можно подготовить в отдельной ветке и выпустить по расписанию через GitHub Actions — пример в `.github/workflows/publish-article.yml`. В нужный момент workflow сливает ветку статьи в `main`, и GitHub Pages обновляет сайт. Отменить публикацию: Actions → workflow → Disable workflow, или удалить ветку статьи. Опубликовать раньше: Actions → workflow → Run workflow с `force = true`.
+## Превью для соцсетей и схемы
+
+- У каждой страницы своё превью 1200×630 — `assets/og/<страница>.png` (графитовый фон, миллиметровка, логотип, название страницы). В `<head>` прописаны `og:image`, `og:image:width`, `og:image:height`, `og:image:alt` и `twitter:card=summary_large_image`. Страница 404 использует превью главной.
+- Картинки рисует `tools/og/render.cjs` по списку `tools/og/pages.json`, который пишет `tools/build.py`. После добавления страницы или смены заголовка:
+
+  ```bash
+  python3 tools/build.py
+  cd tools/og && npm install && node render.cjs          # все страницы
+  node render.cjs plitka oboi                            # или только нужные
+  ```
+
+- Схемы на страницах (как измерить ванную, раскладка плитки, раппорт, смещение рядов ламината, разрез стяжки) — инлайн-SVG из `tools/schemes.py`. Цвета берутся из CSS-переменных, на телефоне схема по ширине экрана, отрисовка отложена до прокрутки (`content-visibility: auto`).
 
 ## Структура
 
